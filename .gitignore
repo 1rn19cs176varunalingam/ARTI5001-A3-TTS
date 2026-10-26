@@ -1,0 +1,41 @@
+# --- Dataset: NEVER commit (task sheet: "Do not upload the dataset") ---
+data/
+*.tar.bz2
+LJSpeech-1.1/
+
+# --- Model weights / training outputs (too large for GitHub; share via Drive) ---
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+runs/
+logs/
+lightning_logs/
+wandb/
+
+# --- Python / Jupyter ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- LaTeX build files (Overleaf builds the PDF itself) ---
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.toc
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+
+# --- OS / editor ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Submission zips are built at the end, not tracked ---
+*_A3.zip

@@ -1,0 +1,54 @@
+Frame,Card,Owner,Rubric,Due,Status
+Setup,Create GitHub repo + invite members,Varun,—,26 Oct,In progress
+Setup,Everyone clones repo + creates venv,All,—,26 Oct,To do
+Setup,Agree method / toolkit,All,2.2,26 Oct,To do
+Setup,Agree controlled variable (expA vs expB),All,1.3 / 2.3,26 Oct,To do
+Setup,Agree compute (M4 / Colab / uni GPU),All,—,26 Oct,To do
+Code,1.1 Load metadata + sanity stats,M1,1.1,27 Oct,Done (skeleton)
+Code,1.1 Justify text normalisation + trimming,M1,1.1,27 Oct,To do
+Code,1.1 Commit split files + md5,M1,1.1,27 Oct,Done (skeleton)
+Code,1.2 synthesize(text) works (pretrained baseline),M2,1.2,28 Oct,To do
+Code,1.2 scripts/synth.py CLI,M2,1.2,28 Oct,To do
+Code,1.2 Module shapes + param counts cell,M2,1.2 / 2.2,29 Oct,To do
+Code,1.3 Train / fine-tune expA,M2+M3,1.3,29 Oct,To do
+Code,1.3 Train / fine-tune expB,M2+M3,1.3,29 Oct,To do
+Code,1.3 Loss curves + checkpoint selection,M3,1.3,30 Oct,To do
+Code,1.4 RTF + latency (warm-up + 5 runs + device),M3,1.4,30 Oct,To do
+Code,1.4 WER/CER with Whisper,M3,1.4 / 2.4,30 Oct,To do
+Code,1.4 MCD vs ground truth,M3,1.4 / 2.4,30 Oct,To do
+Code,1.4 Attribution table + env + AI statement,M1,1.4,31 Oct,To do
+Evidence,Write 10+ prompts incl. hard cases,M1,1.2 / 2.5,28 Oct,To do
+Evidence,Generate expA_01..10 + expB_01..10 wavs,M2,1.2,30 Oct,To do
+Evidence,Spectrogram comparison figure,M3,2.4,30 Oct,To do
+Evidence,Blind A/B listening test,M1,2.4,31 Oct,To do
+Evidence,Failure-mode table with wav refs,M2,2.5,31 Oct,To do
+Report,2.1 Executive summary + Intro,M1,2.1,31 Oct,To do
+Report,2.2 System design diagram + justification,M2,2.2,31 Oct,To do
+Report,2.3 Experiment design + settings table,M3,2.3,31 Oct,To do
+Report,2.4 Results table + trade-offs,M3,2.4,31 Oct,To do
+Report,2.5 Error analysis + improvements,M2,2.5,31 Oct,To do
+Report,Conclusion + scaling + contribution appendix,M1,2.5,1 Nov,To do
+Slides,Slides: problem + data,M1,3.1,1 Nov,To do
+Slides,Slides: architecture + live demo,M2,3.1,1 Nov,To do
+Slides,Slides: experiments + results,M3,3.1,1 Nov,To do
+Slides,Dry run + viva Q&A practice,All,3.2,1 Nov,To do
+Submit,Restart & Run All check,M3,1.2,2 Nov,To do
+Submit,Build <group>_A3.zip (ipynb + wav_examples),M1,—,2 Nov,To do
+Submit,Upload zip + pdf + pptx (one submission),M1,—,2 Nov,To do
+Research,R1 LJSpeech dataset,M1,2.3,28 Oct,To read
+Research,R2 Tacotron,M2,2.2,28 Oct,To read
+Research,R3 Tacotron 2,M2,2.2,28 Oct,To read
+Research,R4 WaveNet,M3,2.2,28 Oct,To read
+Research,R5 WaveGlow,M3,2.2,28 Oct,To read
+Research,R6 HiFi-GAN,M2,2.2,28 Oct,To read
+Research,R7 FastSpeech 2,M2,2.2,28 Oct,To read
+Research,R8 Glow-TTS,M2,2.5,28 Oct,To read
+Research,R9 VITS,M2,2.2,28 Oct,To read
+Research,R10 Grad-TTS,M3,2.3,28 Oct,To read
+Research,R11 Matcha-TTS,M3,2.2,28 Oct,To read
+Research,R12 StyleTTS 2,M1,2.5,28 Oct,To read
+Research,R13 Whisper (WER metric),M3,2.4,28 Oct,To read
+Research,R14 UTMOS (MOS prediction),M3,2.4,28 Oct,To read
+Research,R15 MCD (Kubichek 1993),M3,2.4,28 Oct,To read
+Research,R16 SpeechBrain,M1,2.2,28 Oct,To read
+Research,R17 Coqui TTS,M1,2.2,28 Oct,To read

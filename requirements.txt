@@ -1,0 +1,9 @@
+# Core (data + evaluation). Pin exact versions once the group's environment is final: pip freeze > requirements.lock.txt
+numpy
+pandas
+soundfile
+librosa
+matplotlib
+jupyter
+# Model/toolkit dependencies: TODO(M2) add after choosing the method (e.g. torch, torchaudio, coqui-tts / speechbrain)
+# Evaluation extras: TODO(M3) e.g. openai-whisper, jiwer

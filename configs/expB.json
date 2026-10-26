@@ -1,0 +1,12 @@
+{
+  "model": "<model>",
+  "vocoder": "<vocoder>",
+  "n_train_utts": 3000,
+  "steps": 0,
+  "batch_size": 16,
+  "lr": 0.0002,
+  "tokens": "chars",
+  "sr": 22050,
+  "seed": 42,
+  "split_md5": "851add2d9d20add989a6f10ed76021c3"
+}
