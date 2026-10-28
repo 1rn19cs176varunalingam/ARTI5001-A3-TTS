@@ -6,9 +6,12 @@ from numba import njit
 
 @njit(cache=True)
 def _mas_single(value, t_y, t_x):
+    """value: (t_y frames, t_x phonemes) log-likelihoods, overwritten in place with cumulative best scores.
+    Returns the 0/1 alignment path of the same shape."""
     path = np.zeros((t_y, t_x), dtype=np.float32)
     neg = -1e9
     for y in range(t_y):                                     # forward: best cumulative score per (frame, phoneme)
+        # x is limited so that every phoneme still gets at least one of the remaining frames
         for x in range(max(0, t_x + y - t_y), min(t_x, y + 1)):
             v_cur = neg if x == y else value[y - 1, x]       # stay on the same phoneme
             v_prev = (0.0 if y == 0 else neg) if x == 0 else value[y - 1, x - 1]   # move to the next phoneme
@@ -24,15 +27,16 @@ def _mas_single(value, t_y, t_x):
 @torch.no_grad()
 def log_likelihood(mu, mel):
     """mu: (B, T_text, 80), mel: (B, 80, T_mel) -> (B, T_mel, T_text) Gaussian log-likelihood (up to a constant)."""
+    # log N(frame | mu, I) = -0.5 * ||frame - mu||^2 + const, for every frame/phoneme pair at once
     return -0.5 * torch.cdist(mel.transpose(1, 2), mu) ** 2
 
 
 @torch.no_grad()
 def maximum_path(score, text_lens, mel_lens):
     """0/1 path (B, T_mel, T_text): path[b, j, i] = 1 if mel frame j belongs to phoneme i."""
-    score_np = score.float().cpu().numpy()
+    score_np = score.float().cpu().numpy()                   # Numba runs on CPU numpy arrays
     path = np.zeros_like(score_np)
-    for b in range(score_np.shape[0]):
+    for b in range(score_np.shape[0]):                       # one clip at a time, ignoring its padding
         ty, tx = int(mel_lens[b]), int(text_lens[b])
         path[b, :ty, :tx] = _mas_single(score_np[b, :ty, :tx].copy(), ty, tx)
     return torch.from_numpy(path).to(score.device)

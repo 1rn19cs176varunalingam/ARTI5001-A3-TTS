@@ -23,6 +23,8 @@ class TimeEmbedding(nn.Module):
 
 
 class ResBlock(nn.Module):
+    """Pre-norm residual block: norm -> SiLU -> dilated conv (+ time embedding) -> norm -> SiLU -> conv, plus skip.
+    Multiplying by the mask after every conv keeps padded frames at exactly zero."""
     def __init__(self, ch, dilation, time_cond):
         super().__init__()
         self.norm1, self.norm2 = nn.GroupNorm(8, ch), nn.GroupNorm(8, ch)
@@ -32,13 +34,14 @@ class ResBlock(nn.Module):
 
     def forward(self, x, mask, temb=None):
         y = self.conv1(F.silu(self.norm1(x))) * mask
-        if self.time is not None:
+        if self.time is not None:                                                # flow decoder only: tell the block "where" on the path it is
             y = y + self.time(temb)[:, :, None]
         y = self.conv2(F.silu(self.norm2(y))) * mask
         return (x + y) * mask
 
 
 class _Backbone(nn.Module):
+    """Shared by both decoders: 1x1 conv in -> n_blocks ResBlocks (dilation 1,2,4,8 repeating) -> 1x1 conv out."""
     def __init__(self, in_ch, n_mels, ch, n_blocks, time_cond):
         super().__init__()
         self.inp = nn.Conv1d(in_ch, ch, 1)
@@ -65,6 +68,7 @@ class FlowMatchingDecoder(nn.Module):
         return self.net(torch.cat([x, mu_y], dim=1), mask, self.time(t))
 
     def loss(self, x1, mask, mu_y):
+        """OT-CFM loss: MSE between the predicted and the true velocity at a random point of the noise->mel path."""
         x0 = torch.randn_like(x1)                                                # noise
         t = torch.rand(x1.shape[0], device=x1.device)[:, None, None]             # one time per clip
         x_t = (1 - (1 - self.sigma_min) * t) * x0 + t * x1                       # point on the straight path
@@ -74,6 +78,7 @@ class FlowMatchingDecoder(nn.Module):
 
     @torch.no_grad()
     def sample(self, mu_y, mask, n_steps=10, temperature=0.667):
+        """Integrate the learned velocity from t=0 (noise) to t=1 (mel). temperature < 1 reduces sampling noise."""
         x = torch.randn_like(mu_y) * temperature
         dt = 1.0 / n_steps
         for i in range(n_steps):                                                 # Euler ODE solver
@@ -100,7 +105,7 @@ class RegressionDecoder(nn.Module):
         return self(mask, mu_y)                                                  # deterministic, one pass
 
 
-DECODERS = {"flow": FlowMatchingDecoder, "regression": RegressionDecoder}
+DECODERS = {"flow": FlowMatchingDecoder, "regression": RegressionDecoder}   # config value "decoder" -> class
 
 
 def build_decoder(kind, **kwargs):

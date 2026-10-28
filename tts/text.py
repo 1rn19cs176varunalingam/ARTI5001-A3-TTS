@@ -5,17 +5,19 @@ import json, logging, re, unicodedata
 from num2words import num2words
 
 PAD = "<pad>"
-PAD_ID = 0
+PAD_ID = 0                                                                              # padding id, ignored by the model
 
+# (pattern, spoken form); "mrs" is listed before "mr" so the longer abbreviation wins
 _ABBREVIATIONS = [(re.compile(rf"\b{abbr}\.", re.IGNORECASE), full) for abbr, full in [
     ("mrs", "misess"), ("mr", "mister"), ("dr", "doctor"), ("st", "saint"), ("co", "company"), ("jr", "junior"),
     ("maj", "major"), ("gen", "general"), ("drs", "doctors"), ("rev", "reverend"), ("lt", "lieutenant"),
     ("hon", "honorable"), ("sgt", "sergeant"), ("capt", "captain"), ("esq", "esquire"), ("ltd", "limited"),
     ("col", "colonel"), ("ft", "fort")]]
-_PUNCT_MAP = {"“": '"', "”": '"', "‘": "'", "’": "'", "—": ", ", "–": ", ", "--": ", "}
+_PUNCT_MAP = {"“": '"', "”": '"', "‘": "'", "’": "'", "—": ", ", "–": ", ", "--": ", "}   # dashes read as a pause
 
 
 def _money(amount, unit, sub_unit):
+    """'3.50', 'dollar', 'cent' -> 'three dollars, fifty cents'."""
     whole, _, frac = amount.partition(".")
     whole, frac = int(whole or 0), int((frac + "00")[:2]) if frac else 0
     parts = []
@@ -27,6 +29,7 @@ def _money(amount, unit, sub_unit):
 
 
 def expand_numbers(text):
+    """Digits -> words. Most specific patterns first (money, times, ordinals, years), plain integers last."""
     text = re.sub(r"(\d),(\d{3})", r"\1\2", text)                                      # 1,000 -> 1000
     text = re.sub(r"\$(\d+(?:\.\d+)?)", lambda m: _money(m.group(1), "dollar", "cent"), text)
     text = re.sub(r"£(\d+(?:\.\d+)?)", lambda m: _money(m.group(1), "pound", "penny"), text)
@@ -40,7 +43,7 @@ def expand_numbers(text):
 
 
 def normalize_text(text):
-    """Make arbitrary English text look like LJSpeech's normalised transcripts (see notebook §1.1.D)."""
+    """Make arbitrary English text look like LJSpeech's normalised transcripts (see notebook §1.1.9)."""
     for src, dst in _PUNCT_MAP.items():
         text = text.replace(src, dst)
     for pattern, full in _ABBREVIATIONS:
@@ -72,11 +75,13 @@ def to_phonemes(texts, njobs=1):
 
 
 def build_vocab(phoneme_strings):
+    """One id per distinct character in the IPA strings (sorted, so ids are stable); 0 is reserved for padding."""
     symbols = sorted(set("".join(phoneme_strings)))
     return {PAD: PAD_ID, **{s: i + 1 for i, s in enumerate(symbols)}}
 
 
 def phonemes_to_ids(phonemes, vocab):
+    """Unknown symbols are dropped (none occur in val/test, see notebook §1.1.9.3)."""
     return [vocab[ch] for ch in phonemes if ch in vocab]
 
 

@@ -12,7 +12,7 @@ from tts.tts_model import TTSModel
 from tts.train import pick_device
 
 SR = 22050
-_CACHE = {}
+_CACHE = {}                                                          # (checkpoint, device) -> loaded model; ("voc", device) -> vocoder
 
 
 def load_vocoder(path, device):
@@ -35,6 +35,7 @@ def synthesize(text, model, vocoder, vocab, mel_stats, n_steps=10, temperature=0
     device = next(model.parameters()).device
     ids = torch.tensor([text_to_ids(text, vocab)], device=device)
     mel, _ = model.synthesise_mel(ids, n_steps=n_steps, temperature=temperature, length_scale=length_scale)
+    # undo the §1.1.10.4 normalisation: HiFi-GAN expects raw log-mels
     wav = vocoder(mel * mel_stats["mel_std"] + mel_stats["mel_mean"]).squeeze().clamp(-1, 1).cpu().numpy()
     return wav.astype(np.float32), SR, mel
 

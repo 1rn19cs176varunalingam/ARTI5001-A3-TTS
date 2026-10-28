@@ -1,4 +1,4 @@
-"""Dataset over the cached features of §1.1.E: (phoneme ids, normalised log-mel)."""
+"""Dataset over the cached features of §1.1.10: (phoneme ids, normalised log-mel)."""
 import json, torch
 from torch.utils.data import Dataset
 from tts.text import PAD_ID
@@ -20,6 +20,7 @@ class TTSDataset(Dataset):
 
 
 def collate(batch):
+    """List of (ids, mel) -> padded ids (B, T_text), true text lengths, padded mels (B, 80, T_mel), true mel lengths."""
     ids_list, mel_list = zip(*batch)
     ids_lens = torch.tensor([len(x) for x in ids_list])
     mel_lens = torch.tensor([m.shape[1] for m in mel_list])

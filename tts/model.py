@@ -8,10 +8,10 @@ class TextEncoder(nn.Module):
     def __init__(self, n_vocab, d_model=192, n_layers=6, n_heads=2, n_mels=80, max_len=1000):
         super().__init__()
         self.embed = nn.Embedding(n_vocab, d_model, padding_idx=PAD_ID)
-        self.pos = nn.Embedding(max_len, d_model)
+        self.pos = nn.Embedding(max_len, d_model)                            # learned position embedding
         layer = nn.TransformerEncoderLayer(d_model, n_heads, dim_feedforward=4 * d_model, dropout=0.1, batch_first=True)
         self.transformer = nn.TransformerEncoder(layer, n_layers, enable_nested_tensor=False)
-        self.proj_mu = nn.Linear(d_model, n_mels)
+        self.proj_mu = nn.Linear(d_model, n_mels)                            # hidden state -> mel prior
 
     def forward(self, ids):
         pad_mask = ids == PAD_ID                                             # True on padding

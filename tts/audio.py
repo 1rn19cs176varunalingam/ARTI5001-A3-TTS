@@ -8,6 +8,7 @@ SR, N_FFT, HOP, WIN = 22050, 1024, 256, 1024
 N_MELS, FMIN, FMAX = 80, 0, 8000
 TOP_DB = 40
 
+# Built once at import: (80, 513) mel filterbank and the STFT window
 MEL_BASIS = torch.from_numpy(librosa.filters.mel(sr=SR, n_fft=N_FFT, n_mels=N_MELS, fmin=FMIN, fmax=FMAX)).float()
 WINDOW = torch.hann_window(WIN)
 
@@ -27,8 +28,8 @@ def load_wav(path, trim=True):
 def mel_spectrogram(wav):
     """wav: 1-D numpy/tensor -> log-mel tensor (80, frames)."""
     wav = torch.as_tensor(wav, dtype=torch.float32)
-    pad = (N_FFT - HOP) // 2
+    pad = (N_FFT - HOP) // 2                                                  # HiFi-GAN padding: frames = samples / HOP
     wav = torch.nn.functional.pad(wav[None, None], (pad, pad), mode="reflect")[0]
     spec = torch.stft(wav, N_FFT, hop_length=HOP, win_length=WIN, window=WINDOW, center=False, return_complex=True)
-    spec = torch.sqrt(spec.real ** 2 + spec.imag ** 2 + 1e-9)
-    return torch.log(torch.clamp(MEL_BASIS @ spec, min=1e-5))[0]
+    spec = torch.sqrt(spec.real ** 2 + spec.imag ** 2 + 1e-9)                 # magnitude spectrogram (1, 513, frames)
+    return torch.log(torch.clamp(MEL_BASIS @ spec, min=1e-5))[0]              # mel filterbank, then log with a floor
