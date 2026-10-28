@@ -4,9 +4,13 @@
   "cpu": "arm",
   "numpy": "2.5.4",
   "pandas": "3.1.0",
-  "soundfile": "0.14.0",
+  "torch": "2.14.1",
   "librosa": "1.0.0",
+  "soundfile": "0.14.0",
+  "phonemizer": "3.4.0",
+  "num2words": "0.5.14",
+  "numba": "0.68.0",
   "matplotlib": "3.11.2",
-  "torch": "not installed",
-  "torchaudio": "not installed"
+  "device": "mps",
+  "espeak-ng": "1.52.0"
 }

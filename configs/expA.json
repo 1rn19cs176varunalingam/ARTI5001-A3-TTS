@@ -1,12 +1,20 @@
 {
-  "model": "<model>",
-  "vocoder": "<vocoder>",
-  "n_train_utts": 1000,
-  "steps": 0,
-  "batch_size": 16,
-  "lr": 0.0002,
-  "tokens": "chars",
-  "sr": 22050,
+  "name": "expA",
   "seed": 42,
-  "split_md5": "851add2d9d20add989a6f10ed76021c3"
+  "split_md5": "78fda0eda5bbdcaecb57fd47e9b20610",
+  "n_train_utts": 3000,
+  "epochs": 300,
+  "batch_size": 32,
+  "lr": 0.0001,
+  "grad_clip": 1.0,
+  "milestones": [
+    75,
+    150,
+    225,
+    300
+  ],
+  "decoder": "flow",
+  "dec_blocks": 8,
+  "inference_steps": 10,
+  "temperature": 0.667
 }

@@ -1,0 +1,5 @@
+exp,decoder,blocks,epochs run,best epoch,best val,val dur @best,val prior @best,val dec @best,s/epoch,train time (min),checkpoints
+expA,flow,8,2,2,4.18564248085022,1.340855896472931,1.287010133266449,1.5577764511108398,2.15,0.07166666666666667,"best.ckpt, epoch_001.ckpt, epoch_002.ckpt, last.ckpt"
+expB,flow,4,2,2,4.209467530250549,1.366957664489746,1.2806533575057983,1.5618565082550049,1.0,0.03333333333333333,"best.ckpt, epoch_001.ckpt, epoch_002.ckpt, last.ckpt"
+expC,regression,8,2,2,3.3318909108638763,1.3642703890800476,1.2833350896835327,0.684285432100296,1.4,0.04666666666666666,"best.ckpt, epoch_001.ckpt, epoch_002.ckpt, last.ckpt"
+expD,regression,4,2,1,3.3116952776908875,1.271405279636383,1.321445882320404,0.7188441157341003,1.05,0.035,"best.ckpt, epoch_001.ckpt, epoch_002.ckpt, last.ckpt"

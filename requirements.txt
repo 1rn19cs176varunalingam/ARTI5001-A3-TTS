@@ -5,5 +5,10 @@ soundfile
 librosa
 matplotlib
 jupyter
-# Model/toolkit dependencies: TODO(M2) add after choosing the method (e.g. torch, torchaudio, coqui-tts / speechbrain)
+# Model (notebook/A3_final.ipynb): our acoustic model + pretrained HiFi-GAN.
+# Also needs the espeak-ng system package (macOS: brew install espeak-ng; Ubuntu/Colab: apt install espeak-ng)
+torch
+phonemizer
+num2words
+numba
 # Evaluation extras: TODO(M3) e.g. openai-whisper, jiwer

@@ -1,0 +1,20 @@
+{
+  "name": "expC",
+  "seed": 42,
+  "split_md5": "78fda0eda5bbdcaecb57fd47e9b20610",
+  "n_train_utts": 3000,
+  "epochs": 300,
+  "batch_size": 32,
+  "lr": 0.0001,
+  "grad_clip": 1.0,
+  "milestones": [
+    75,
+    150,
+    225,
+    300
+  ],
+  "decoder": "regression",
+  "dec_blocks": 8,
+  "inference_steps": 10,
+  "temperature": 0.667
+}
