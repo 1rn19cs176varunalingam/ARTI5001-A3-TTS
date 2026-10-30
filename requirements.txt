@@ -11,4 +11,9 @@ torch
 phonemizer
 num2words
 numba
-# Evaluation extras: TODO(M3) e.g. openai-whisper, jiwer
+# Evaluation (notebook §1.4, scripts/evaluate.py): Whisper via transformers, WER/CER, MCD
+transformers
+jiwer
+pyworld
+pysptk
+setuptools<81   # pyworld still imports pkg_resources

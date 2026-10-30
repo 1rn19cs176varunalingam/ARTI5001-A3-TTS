@@ -1,0 +1,12 @@
+01|The quick brown fox jumps over the lazy dog.
+02|Hello, welcome to our text to speech experiment.
+03|On March 3rd, 1963, Mr. Johnson paid $3.50 for a ticket at 10:30.
+04|Do you really think that the committee will approve the new proposal by Friday?
+05|The old library, which had been closed for nearly a decade, finally reopened its doors to the public last spring.
+06|Dr. Smith lives at 221 Baker St. in London.
+07|Artificial intelligence can transform written text into speech.
+08|She sells seashells by the seashore.
+09|The commission concluded that the evidence did not support the theory of a second gunman.
+10|Wow! That was absolutely incredible, wasn't it?
+11|Please read this sentence clearly and naturally.
+12|Although the weather forecast predicted heavy rain throughout the afternoon, thousands of people still gathered in the park to watch the annual music festival.

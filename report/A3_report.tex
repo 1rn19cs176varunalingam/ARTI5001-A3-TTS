@@ -1,37 +1,41 @@
 % =====================================================================
 % ARTI5001 Assignment 3 — Report
-% Single-speaker TTS on LJSpeech: flow-matching vs regression decoders
+% Single-speaker TTS on LJSpeech: flow-matching vs regression decoders, two decoder depths, two data sizes
 %
-% Overleaf: New Project > Upload Project > zip of this report/ folder. Compiler: pdfLaTeX.
+% Overleaf: upload this report/ folder (A3_report.tex, references.bib, figures/). Compiler: pdfLaTeX.
 % Bibliography: references.bib, Harvard (author-year) via natbib + agsm.
-% LIMIT: 12 A4 pages INCLUDING references. Page budget per section is given in each header comment.
+% LIMIT: 12 A4 pages INCLUDING references; the Contribution Appendix does not count.
 %
-% \ph{...}   = placeholder (red box), so nothing unfinished slips through. Search for "\ph{" before submitting.
-% Numbers already filled in come from the notebook (notebook/A3_final.ipynb, section numbers given as "nb §x.y.z").
+% \ph{...} = placeholder (red box). Search for "\ph{" before submitting.
+% Numbers come from notebook/A3_full_colab.ipynb (main runs) and notebook/A3_final.ipynb (3k runs), "nb §x.y.z".
+% Test-set numbers are on a seeded 100-sentence sample of the test split; replace with the full test split when ready.
 % =====================================================================
 \documentclass[11pt,a4paper]{article}
-\usepackage[margin=2.2cm]{geometry}
+\usepackage[margin=2.1cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern,microtype}
 \usepackage{graphicx,booktabs,tabularx,multirow,xcolor,enumitem,caption,subcaption}
 \usepackage{amsmath,amssymb}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
-\usepackage[round]{natbib}          % Harvard (author-year) citations: \citet{} = Author (Year), \citep{} = (Author, Year)
+\usepackage[round]{natbib}          % Harvard (author-year): \citet{} = Author (Year), \citep{} = (Author, Year)
 \usepackage[hidelinks]{hyperref}
-\setlist{nosep}
+\setlist{nosep,leftmargin=*}
 \captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{3pt}
+\setlength{\textfloatsep}{8pt}
 
 \newcommand{\ph}[1]{\colorbox{red!12}{\textcolor{red!70!black}{\small\textsf{[#1]}}}}
 \newcommand{\expA}{\texttt{expA}}
 \newcommand{\expB}{\texttt{expB}}
 \newcommand{\expC}{\texttt{expC}}
 \newcommand{\expD}{\texttt{expD}}
+\newcommand{\ci}[2]{{\scriptsize[#1, #2]}}
 
-% =====================================================================
-% TITLE PAGE (group details)
-% =====================================================================
 \begin{document}
+% =====================================================================
+% TITLE PAGE
+% =====================================================================
 \begin{titlepage}
 \centering
 \vspace*{3cm}
@@ -55,213 +59,161 @@ En Li & a1993209 \\
 \end{titlepage}
 
 % =====================================================================
-% EXECUTIVE SUMMARY  (non-technical, <= 1 page)
+% EXECUTIVE SUMMARY
 % =====================================================================
 \section*{Executive Summary}
-% Write for a manager, not an engineer: no jargon (no "mel", "ODE", "MAS"). Cover problem, system, result, value,
-% feasibility/scaling, recommendation. Fill in AFTER the results are in.
+\noindent\textbf{The problem.} Text-to-speech turns written text into spoken audio. It powers screen readers for people with low vision, audiobook and e-learning narration, announcements and customer-service voices. Commercial systems are built by large teams on large computers; we asked how good a voice a small team can build \emph{from scratch} with a laptop and free cloud computing, and which design choices matter most.
 
-\noindent\textbf{The problem.} Turning written text into natural-sounding speech (text-to-speech) underpins screen readers, audiobooks, voice assistants and announcement systems. Good systems usually need large datasets and expensive computers. We asked how good a voice a small team can build \emph{from scratch} on one laptop, and which design choice matters most.
+\noindent\textbf{What we delivered.} A complete system that takes any English sentence, including numbers, dates, money and common abbreviations, and produces a recording in the voice of one speaker. One command (\texttt{scripts/synth.py}) turns text into an audio file. The voice was learned from about 19 hours of a single speaker reading books aloud.
 
-\noindent\textbf{What we built.} A working system that takes any English sentence and produces a recording in the voice of a single speaker. It was trained on about 5.5 hours of one speaker's audiobook recordings. \ph{one sentence: what it handles well, e.g. numbers, abbreviations, punctuation}
+\noindent\textbf{What we compared.} The part of the system that ``paints'' the sound can be built in two ways: one predicts it directly in a single step; the other generates it gradually in ten steps, which in principle gives more lifelike detail. We built both, each in a large and a small size, and trained all four on identical data for identical time. We then repeated everything with less than a third of the recordings, to see how much the amount of data matters.
 
-\noindent\textbf{What we compared.} The final ``speaking'' step of the system can be built in two ways. One predicts the sound directly in a single fast step. The other generates it gradually over several steps, which costs more time. We built both, each in a large and a small size, and gave all four versions identical data and training time.
+\noindent\textbf{What we found.}
+\begin{itemize}
+  \item \textbf{The voice is highly intelligible.} An automatic speech recogniser misheard 2.8--4.8\% of our words, against 1.6\% on the speaker's real recordings.
+  \item \textbf{More data was the biggest win.} With 19 instead of 5.5 hours of recordings, recognition errors fell by a factor of two to three, and the robotic, even rhythm of the smaller models largely disappeared.
+  \item \textbf{The simpler single-step design was slightly clearer}, not worse as we expected (2.8\% vs 4.0\% errors), and the small versions were as good as the large ones.
+  \item \textbf{It is fast and cheap to run.} A sentence takes about 0.2 seconds on a laptop's graphics chip and 0.5 seconds on its ordinary processor, i.e.\ 7 to 25 times faster than real time, with no special hardware.
+\end{itemize}
 
-\noindent\textbf{What we found.} \ph{headline result in everyday terms, e.g. ``the gradual version was clearly more natural and X\% more intelligible to an automatic listener, while still producing speech N times faster than real time''}
+\noindent\textbf{Feasibility and scaling.} Training one voice took under an hour on a free cloud GPU. When serving many users, the bottleneck is the final ``waveform'' stage (over 80\% of the run time), not our model; it can be served in parallel on ordinary servers. The largest quality gains will come from more recordings of the target speaker, then from a larger model.
 
-\noindent\textbf{Practical value and cost.} \ph{e.g. one hour of speech generated in N minutes on a laptop; no specialised hardware needed at run time}
-
-\noindent\textbf{Feasibility and scaling.} \ph{what a production version would need: more data, a GPU for training, CPU is enough for serving, \ldots}
-
-\noindent\textbf{Recommendation.} \ph{which version to use and why, in one sentence}
+\noindent\textbf{Recommendation.} Use the single-step design in its small size (\expD: 4.9 million parameters, as intelligible as the largest model) for real-time and low-cost deployment, and collect more speaker data before investing in a bigger model. \ph{confirm or adjust after the group's blind listening test}
 \newpage
 
 % =====================================================================
-% 1. INTRODUCTION AND PROBLEM FRAMING  (~0.75 page)
+% 1. INTRODUCTION
 % =====================================================================
-\section{Introduction and Problem Framing}
-Modern neural text-to-speech (TTS) systems split the task into stages \citep{shen2018tacotron2,ren2021fastspeech2}. A text front-end converts text into phonemes. An \emph{acoustic model} predicts a mel spectrogram from the phonemes. A \emph{vocoder} converts the mel spectrogram into a waveform. The acoustic model decides \emph{what} is said, for \emph{how long} and with \emph{which} spectral detail, so it is where most design decisions sit.
+\section{Introduction}
+Neural text-to-speech (TTS) is usually built in three stages \citep{shen2018tacotron2,ren2021fastspeech2}: a \emph{front-end} turns text into phonemes, an \emph{acoustic model} predicts a mel spectrogram, and a \emph{vocoder} turns the spectrogram into a waveform. The acoustic model decides what is said, for how long and with which spectral detail, so it carries most design choices. A central one is how its final mel \emph{decoder} is trained. \emph{Regression} decoders \citep{ren2021fastspeech2} predict the mel directly with an $L_1$/$L_2$ loss: fast and simple, but known to over-smooth, because they learn the average of all plausible renditions. \emph{Generative} decoders, such as diffusion \citep{popov2021gradtts} or conditional flow matching \citep{mehta2024matcha}, learn a distribution and sample from it, at the cost of several network passes.
 
-A central choice inside the acoustic model is how the final mel decoder is trained. \emph{Regression} decoders \citep{ren2021fastspeech2} predict the mel directly with an $L_1$/$L_2$ loss. They are fast and simple, but they are known to produce over-smoothed spectra, because they learn the average of all plausible renditions. \emph{Generative} decoders, such as diffusion \citep{popov2021gradtts} or conditional flow matching \citep{mehta2024matcha}, instead learn a distribution and sample from it. The cost is several network evaluations per utterance.
+\noindent\textbf{Aim and scope.} Build a complete, reproducible single-speaker English TTS system on LJSpeech \citep{ito2017ljspeech}, with an acoustic model implemented and trained from scratch and a pretrained, frozen HiFi-GAN vocoder \citep{kong2020hifigan}; and measure under controlled conditions how three variables affect intelligibility, quality and speed. Multi-speaker training, style control and vocoder training are out of scope.
 
-\noindent\textbf{Aim.} To build a complete, reproducible TTS pipeline on LJSpeech \citep{ito2017ljspeech} with an acoustic model implemented and trained from scratch, and to measure, under controlled conditions, how the decoder objective and the decoder depth affect intelligibility, quality and speed.
+\noindent\textbf{Experimental plan.} A $2\times2$ factorial design, \emph{decoder objective} (flow matching vs regression) $\times$ \emph{decoder depth} (8 vs 4 residual blocks), trained on the full training split; the same four models are repeated on a 3{,}000-utterance subset as a third controlled variable, \emph{data size}. This gives three research questions:
+\textbf{RQ1} Does flow matching give better speech than regression of the same size, and at what inference cost?
+\textbf{RQ2} How much does decoder depth matter, and does the answer depend on the objective?
+\textbf{RQ3} How much does training-data size matter, and does it affect both objectives equally?
 
-\noindent\textbf{Scope.}
-\begin{itemize}
-  \item Single speaker (LJSpeech) and English only.
-  \item A 3{,}000-utterance training subset (about 5.5\,h) and an equal budget of 300 epochs per experiment, on one Apple M4 laptop.
-  \item A pretrained, frozen HiFi-GAN vocoder \citep{kong2020hifigan}.
-  \item Out of scope: multi-speaker training, emotion and style control, and training a vocoder.
-\end{itemize}
-
-\noindent\textbf{Research questions.}
-\textbf{RQ1:} Does a flow-matching decoder produce more natural and intelligible speech than a regression decoder of the same size, and at what inference cost?
-\textbf{RQ2:} How much does decoder depth (8 vs 4 residual blocks) matter, and does the answer depend on the objective?
-
-\noindent\textbf{Contributions.}
-\begin{itemize}
-  \item A reproducible LJSpeech pipeline: integrity checks, a justified text and audio front-end, and a fixed 80/10/10 split (seed 42, MD5-fingerprinted).
-  \item A Matcha-style acoustic model written from scratch, with two interchangeable decoders that share one backbone.
-  \item A $2\times2$ factorial experiment in which every compared pair differs in exactly one variable (checked in code).
-  \item A multi-metric evaluation (RTF, latency, ASR-based WER/CER, \ph{MCD / UTMOS}), plus listening evidence and an error analysis.
-\end{itemize}
+\noindent\textbf{What ``good'' means here.} (i) \emph{Intelligibility}: the words are recognisable (ASR word/character error rate); (ii) \emph{fidelity}: the spectrum and rhythm are close to the real speaker (mel-cepstral distortion, duration ratio); (iii) \emph{naturalness}: the speech does not sound robotic (listening, spectrograms); (iv) \emph{speed}: faster than real time on ordinary hardware (real-time factor, latency). Section~\ref{sec:metrics} justifies each metric.
 
 % =====================================================================
-% 2. BACKGROUND (short, ~0.5 page) — optional but helps "justification"; merge into §1 if space is tight
+% 2. DATASET & PROTOCOL
 % =====================================================================
-\section{Background}
-\textbf{Acoustic models.} Autoregressive models such as Tacotron~2 \citep{shen2018tacotron2} generate one frame at a time with attention. They are natural-sounding but slow, and they are prone to skipping or repeating words. Non-autoregressive models such as FastSpeech~2 \citep{ren2021fastspeech2} predict a duration for every phoneme and then all frames in parallel. Glow-TTS \citep{kim2020glowtts} removed the need for an external aligner with \emph{Monotonic Alignment Search} (MAS), which learns the alignment jointly with the model.
+\section{Dataset and Protocol}\label{sec:data}
+\textbf{Source and format.} LJSpeech~1.1 \citep{ito2017ljspeech}: 13{,}100 audio--text pairs (23.92\,h) of one female speaker reading non-fiction, 22{,}050\,Hz mono 16-bit WAV, with \texttt{metadata.csv} holding an ID, the raw transcript and a normalised transcript. All files were checked for format, readability and a matching transcript (nb §1.1.6). The metadata must be read with \texttt{QUOTE\_NONE}: with default CSV quoting, quote characters swallow the delimiter and 16 transcripts appear empty.
 
-\textbf{Generative decoders.} Grad-TTS \citep{popov2021gradtts} adds a diffusion decoder conditioned on a frame-level prior. It is high quality, but needs tens to hundreds of steps. Matcha-TTS \citep{mehta2024matcha} replaces diffusion with optimal-transport conditional flow matching \citep{lipman2023flowmatching}. This learns straight noise-to-data paths, so about 10 steps suffice.
+\noindent\textbf{Split.} 80/10/10 = 10{,}480 / 1{,}310 / 1{,}310 clips: the IDs are sorted, shuffled once with \texttt{numpy} seed 42 and cut at 80\% and 90\%. The ID lists are saved with an MD5 fingerprint (\texttt{78fda0eda5bbdcaecb57fd47e9b20610}) that is stored in every config and checkpoint, so all runs provably share the split. \textbf{Training} uses the full training split (about 19\,h after trimming) for the main runs, and for RQ3 a \textbf{3{,}000-utterance subset} (5.5\,h): the first 3{,}000 IDs of a seed-42 permutation of the training split, within the task sheet's 1--3k guidance. \textbf{Validation:} a fixed 300-clip sample of the validation split is scored every epoch and selects \texttt{best.ckpt}. \textbf{Test:} never used for training or selection; Section~\ref{sec:results} reports a seeded 100-sentence sample \ph{replace with all 1,310}. Vocabulary and mel statistics come from each run's own training data only, so nothing leaks from validation or test.
 
-\textbf{End-to-end models.} VITS \citep{kim2021vits} maps text directly to a waveform with a VAE and adversarial training. It gives high quality, but is harder to train and to analyse.
-
-\textbf{Vocoders.} HiFi-GAN \citep{kong2020hifigan} is a GAN vocoder that is both fast and high quality. It is the standard companion of mel-based acoustic models.
-
-\noindent Our system follows the Matcha-TTS and Glow-TTS family, simplified. The decoder objective, the main design question in this family, is our controlled variable.
+\noindent\textbf{Preprocessing} (Table~\ref{tab:preproc}). Every step was decided from a measurement of the raw data (nb §1.1.7) and checked afterwards (nb §1.1.11).
+\begin{table}[h]
+\centering\small
+\caption{Preprocessing decisions and the evidence behind each.}
+\label{tab:preproc}
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Step & Choice & Evidence / reason \\ \midrule
+Sample rate & keep 22{,}050\,Hz & every file is 22{,}050\,Hz, equal to the vocoder's rate; no resampling artefacts \\
+Silence & trim edges, \texttt{top\_db}=40 & leading silence $\approx$0\,s but trailing $\approx$80\,ms in almost every clip; alignment would attach it to the last phoneme and teach an unpredictable pause. Removes 1.2\% of the audio; no clip loses more than half its length \\
+Loudness & none & speech RMS spread of only 1.25\,dB across clips: already consistent \\
+Text source & normalised column & raw column: 1{,}489 clips with digits; normalised column: 0 (hand-expanded, more accurate than rules) \\
+Abbreviations & expand (\textit{Mr.} $\rightarrow$ \textit{mister}) & still present in 573 normalised transcripts; the ``.'' would otherwise be read as a sentence end \\
+Numbers, money, times & spell out (\texttt{num2words}) & training text has no digits, so arbitrary input must be brought to the same form \\
+Symbols & IPA phonemes with stress, punctuation kept & 55 symbols, 105 per clip on average; punctuation carries pauses and intonation \\
+Mel features & 80-band log-mel, 1024/256/1024, 0--8\,kHz & identical to HiFi-GAN's training features; any mismatch produces noise \\
+Mel scaling & global mean/std of the training data ($-5.49$ / $2.06$) & the flow decoder starts from $\mathcal N(0,I)$ noise, so targets on that scale train stably \\ \bottomrule
+\end{tabularx}
+\end{table}
 
 % =====================================================================
-% 3. SYSTEM DESIGN (with diagram) AND JUSTIFICATION  (~2 pages)
+% 3. SYSTEM METHOD AND IMPLEMENTATION
 % =====================================================================
-\section{System Design}\label{sec:design}
-% HD: clear diagram + role of EACH module + choices justified by linking constraints -> decisions -> goals.
-% If you draw the diagram in Mermaid/draw.io instead, export to figures/pipeline.pdf and replace the tikzpicture with
-%   \includegraphics[width=\linewidth]{figures/pipeline.pdf}
-
-\begin{figure}[t]
+\section{System Method and Implementation}\label{sec:design}
+\subsection{System diagram}
+\begin{figure}[h]
 \centering
-\begin{tikzpicture}[node distance=3.5mm and 4mm, >=Stealth,
-  box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, font=\footnotesize, inner sep=3pt},
-  rule/.style={box, fill=gray!10},
-  ours/.style={box, fill=blue!10},
-  pre/.style={box, fill=orange!15},
+\begin{tikzpicture}[node distance=3.2mm and 3.6mm, >=Stealth,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, font=\footnotesize, inner sep=2.5pt},
+  rule/.style={box, fill=gray!10}, ours/.style={box, fill=blue!10}, pre/.style={box, fill=orange!15},
   lab/.style={font=\scriptsize, midway, above}]
-  % inference path
   \node[rule] (txt) {Text};
   \node[rule, right=of txt] (norm) {Normaliser\\(rules)};
   \node[rule, right=of norm] (g2p) {espeak-ng\\phonemes};
   \node[ours, right=of g2p] (enc) {Text encoder\\(Transformer)};
   \node[ours, right=of enc] (dur) {Duration\\predictor};
-  \node[ours, right=of dur] (dec) {Mel decoder\\\textbf{flow / regr.}};
+  \node[ours, right=of dur, draw=red!70!black, very thick] (dec) {Mel decoder\\\textbf{flow / regr.}\\\textbf{8 / 4 blocks}};
   \node[pre, right=of dec] (voc) {HiFi-GAN\\(frozen)};
   \node[rule, right=of voc] (wav) {.wav};
   \draw[->] (txt) -- (norm); \draw[->] (norm) -- (g2p); \draw[->] (g2p) -- node[lab]{ids} (enc);
   \draw[->] (enc) -- node[lab]{$\mu$} (dur); \draw[->] (dur) -- node[lab]{$\mu_y$} (dec);
   \draw[->] (dec) -- node[lab]{mel} (voc); \draw[->] (voc) -- (wav);
-  % training-only path
-  \node[rule, below=9mm of g2p] (audio) {Audio $\rightarrow$ trim\\$\rightarrow$ log-mel $\rightarrow$ norm.};
-  \node[ours, below=9mm of dur, fill=green!10] (mas) {MAS alignment\\(training only)};
+  \node[rule, below=8mm of g2p, draw=red!70!black, very thick] (audio) {Training audio: \textbf{10{,}480 / 3{,}000 utts}\\trim $\rightarrow$ log-mel $\rightarrow$ normalise};
+  \node[ours, below=8mm of dur, fill=green!10] (mas) {MAS alignment\\(training only)};
   \draw[->, dashed] (audio) -- node[lab, below]{target mel} (mas);
   \draw[->, dashed] (enc.south) |- (mas.west);
   \draw[->, dashed] (mas) -- node[font=\scriptsize, right]{durations} (dur.south);
   \draw[->, dashed] (mas.east) -| node[font=\scriptsize, pos=0.25, below]{target / loss} (dec.south);
 \end{tikzpicture}
-\caption{The pipeline. Solid arrows show inference, dashed arrows show training only. Blue modules are implemented and trained from scratch by us, orange is pretrained and frozen, and grey is rule-based. Only the \textbf{mel decoder} differs between experiments.}
+\caption{The pipeline. Solid arrows: inference; dashed: training only. Blue: implemented and trained from scratch by us; orange: pretrained and frozen; grey: rule-based. \textbf{Red outlines mark the controlled variables}: the decoder objective and depth (RQ1, RQ2) and the training-data size (RQ3).}
 \label{fig:pipeline}
 \end{figure}
 
-\subsection{Modules}
-Table~\ref{tab:modules} lists every module, its role and its tensor interface. Parameter counts are for the baseline \expA.
+\noindent Table~\ref{tab:modules} gives each module's role. The \textbf{training loss} is the sum of a duration loss (MSE on log-durations from Monotonic Alignment Search, MAS), a prior loss (Gaussian negative log-likelihood of the target mel under $\mu_y$) and the decoder loss. The \textbf{flow-matching} decoder \citep{lipman2023flowmatching,mehta2024matcha} samples $x_0\!\sim\!\mathcal N(0,I)$ and $t\!\sim\!U[0,1]$, forms $x_t=(1-(1-\sigma_{\min})t)\,x_0+t\,x_1$ and regresses its velocity $v_\theta(x_t,\mu_y,t)$ onto $x_1-(1-\sigma_{\min})x_0$; at inference it integrates from noise (temperature 0.667) with 10 Euler steps. The \textbf{regression} decoder is the same network without the time input, trained with masked $L_1$ to output $x_1$ in one pass. Only the objective differs, so RQ1 is a clean comparison.
 
 \begin{table}[h]
 \centering\small
-\caption{Modules, their roles and their interfaces ($L$ = phonemes, $T$ = mel frames of 11.6\,ms).}
+\caption{Modules ($L$ = phonemes, $T$ = mel frames of 11.6\,ms). Parameters for \expA; the decoder has 4.27\,M (\expA), 2.43\,M (\expB), 3.20\,M (\expC) and 1.62\,M (\expD) parameters.}
 \label{tab:modules}
 \begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}Xll@{}}
 \toprule
-Module & Role & Input $\rightarrow$ Output & Params \\ \midrule
-Text normaliser & Spells out abbreviations, numbers, money and times; ASCII and lower case; keeps prosodic punctuation & string $\rightarrow$ string & -- \\
-Phonemiser & espeak-ng IPA with stress marks \citep{bernard2021phonemizer}; 55-symbol vocabulary from the training split & string $\rightarrow$ ids $[L]$ & -- \\
-Text encoder & Embedding, 6-layer Transformer \citep{vaswani2017attention} ($d{=}192$), and a projection to a per-phoneme mel prior $\mu$ & $[L] \rightarrow [L{\times}80]$ & 2.89\,M \\
-MAS (training only) & Finds the most likely monotonic phoneme-to-frame alignment, giving target durations \citep{kim2020glowtts} & $\mu$, mel $\rightarrow$ durations $[L]$ & -- \\
-Duration predictor & 3 conv layers predicting log-durations; at inference, expands $\mu$ to frame level $\mu_y$ & $[L{\times}192] \rightarrow [L]$ & 0.34\,M \\
-Mel decoder & Refines $\mu_y$ into the final mel with residual conv blocks (256 ch.); \textbf{flow matching or regression; 8 or 4 blocks} & $[80{\times}T] \rightarrow [80{\times}T]$ & 4.27\,M \\
-Vocoder & HiFi-GAN V1 trained on LJSpeech \citep{kong2020hifigan}, frozen & $[80{\times}T] \rightarrow [256T]$ samples & 13.94\,M \\ \bottomrule
+Module & Role & In $\rightarrow$ out & Params \\ \midrule
+Normaliser & abbreviations, numbers, money, times $\rightarrow$ words; ASCII, lower case; keeps prosodic punctuation & text $\rightarrow$ text & -- \\
+Phonemiser & espeak-ng IPA with stress \citep{bernard2021phonemizer}; 55-symbol vocabulary & text $\rightarrow$ ids $[L]$ & -- \\
+Text encoder & embedding + 6-layer Transformer \citep{vaswani2017attention} ($d{=}192$) $\rightarrow$ per-phoneme mel prior $\mu$ & $[L] \rightarrow [L{\times}80]$ & 2.89\,M \\
+MAS (training) & most likely monotonic phoneme-to-frame alignment $\rightarrow$ target durations \citep{kim2020glowtts} & $\mu$, mel $\rightarrow [L]$ & -- \\
+Duration predictor & 3 conv layers $\rightarrow$ log-durations; expands $\mu$ to frame level $\mu_y$ & $[L{\times}192] \rightarrow [L]$ & 0.34\,M \\
+Mel decoder & residual 1-D conv blocks (256 ch., dilations 1--8) refining $\mu_y$ into the mel & $[80{\times}T] \rightarrow [80{\times}T]$ & 4.27\,M \\
+Vocoder & HiFi-GAN V1 trained on LJSpeech \citep{kong2020hifigan}, frozen & $[80{\times}T] \rightarrow [256T]$ & 13.94\,M \\ \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textbf{Training objective.} The total loss is the sum of three terms: the duration loss (MSE on log-durations from MAS), the prior loss (Gaussian negative log-likelihood of the target mel under $\mu_y$) and the decoder loss.
-For the \textbf{flow-matching} decoder \citep{lipman2023flowmatching,mehta2024matcha}, we sample $x_0\!\sim\!\mathcal N(0,I)$ and $t\!\sim\!U[0,1]$, set $x_t=(1-(1-\sigma_{\min})t)\,x_0+t\,x_1$, and regress the network's velocity $v_\theta(x_t,\mu_y,t)$ onto $u=x_1-(1-\sigma_{\min})x_0$. At inference it integrates $v_\theta$ from noise (temperature 0.667) with 10 Euler steps.
-The \textbf{regression} decoder uses the same backbone without the time input, and minimises the masked $L_1$ distance between its single-pass output and $x_1$.
-
-\subsection{Design Justification}
-Table~\ref{tab:justify} links each constraint to the decision it led to and the evidence behind it. The full list of decisions, with alternatives, is in the notebook (nb~§1.2.1).
+\subsection{Design justification}
+Table~\ref{tab:justify} links each constraint to the decision it led to. The overriding constraints were \emph{compute} (a laptop and free Colab GPUs), \emph{time} (four controlled runs, twice, inside the assignment window) and the requirement that the acoustic model be our own, so that the decoder could be varied cleanly.
 
 \begin{table}[h]
 \centering\small
-\caption{Constraints $\rightarrow$ decisions $\rightarrow$ consequences.}
+\caption{Constraints $\rightarrow$ decisions $\rightarrow$ consequences, with the alternatives we rejected.}
 \label{tab:justify}
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.2cm}@{}}
 \toprule
-Constraint / goal & Decision & Consequence / evidence \\ \midrule
-Build the acoustic model ourselves; one laptop GPU (Apple M4, 16\,GB) & Compact Matcha-style model (5--7.5\,M params) with a 1-D conv decoder instead of Matcha's U-Net & About 54\,s per epoch for \expA; 300 epochs in about 4.7\,h \\
-No external aligner available; avoid attention failures & MAS \citep{kim2020glowtts} with a duration predictor & Alignment is monotonic by construction, so no skipped or repeated words; fully parallel inference \\
-English spelling is ambiguous; small data & IPA phonemes from espeak-ng, stress kept & The model learns pronunciation, not spelling rules; no out-of-vocabulary symbols in val/test (nb §1.1.9.3) \\
-Training a vocoder takes days & Pretrained HiFi-GAN V1; our mel settings \emph{match} it exactly (1024/256/1024, 80 bands, 0--8\,kHz) & High-fidelity waveforms from the first epoch; one vocoder shared by all runs keeps the comparison fair \\
-Flow matching starts from $\mathcal N(0,I)$ & Global mel normalisation with training-subset mean/std ($-5.50$ / $2.06$) & Targets on the noise scale; no leakage from val/test \\
-Goal: real-time synthesis & Non-autoregressive model; 10 ODE steps rather than diffusion's 50--1000 & \ph{RTF from Table~\ref{tab:results}} \\ \bottomrule
+Constraint / goal & Decision & Consequence / evidence & Rejected alternative \\ \midrule
+English spelling is ambiguous; small data & IPA phonemes (espeak-ng), stress kept & the model learns sounds, not spelling rules; no unknown symbols in val/test (nb §1.1.9.3) & characters: must learn pronunciation from 13k sentences \\
+No aligner available; avoid attention failures & non-autoregressive, MAS + duration predictor (Glow-TTS style) & monotonic by construction, so no skipped or repeated words; parallel, fast inference & Tacotron~2: autoregressive, slower, attention can fail \\
+Own acoustic model, clean controlled variable & Matcha-style model from scratch, decoders sharing one backbone & only the objective/depth differ; 4.9--7.5\,M params train in under 1\,h per run on a Colab GPU & fine-tuning VITS: end-to-end, decoder not separable \\
+Generative decoder within budget & OT-CFM flow matching, 10 Euler steps & straight noise-to-data paths need few steps \citep{mehta2024matcha} & diffusion (Grad-TTS): 50--1000 steps \\
+Training a vocoder takes days & pretrained HiFi-GAN V1, mel settings matched exactly & high-fidelity audio from epoch 1; one shared vocoder keeps comparisons fair (vocoded recordings: WER 1.75\% vs 1.63\%) & Griffin--Lim: audibly robotic \\
+Fair comparison & identical data order, seed, epochs (300), optimiser, selection rule & only the controlled variable changes; asserted in code (nb §1.3.3) & tuning each run: confounds the comparison \\ \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textbf{Alternatives rejected.}
-\begin{itemize}
-  \item \emph{Fine-tuning a pretrained VITS:} a from-scratch acoustic model makes the decoder a clean controlled variable and keeps every design decision ours.
-  \item \emph{Tacotron~2 with attention:} slower and less robust on 5\,h of data.
-  \item \emph{A diffusion decoder:} it needs many more sampling steps for similar quality \citep{mehta2024matcha}.
-  \item \emph{Griffin--Lim instead of a neural vocoder:} it gives audibly robotic output.
-\end{itemize}
+\subsection{Engineering and reproducibility}
+The notebook writes every module to a \texttt{tts/} package with \texttt{\%\%writefile}, so the notebook, the scripts and the marker run identical code. \textbf{Training:} \texttt{python -m tts.train --config configs/expA.json} (or \emph{Run all}; runs resume from \texttt{last.ckpt} and finished runs are skipped). \textbf{Inference (single entry point):} \texttt{python scripts/synth.py --text "Hello." --exp expA --out out.wav --ckpt\_root checkpoints/runs\_full}. \textbf{Evaluation:} \texttt{python scripts/evaluate.py}. Seeds fix the split, data order, initialisation, validation noise and synthesis noise. \textbf{Environment:} \texttt{requirements.txt} plus the espeak-ng system package; Python 3.13, PyTorch 2.14, librosa 1.0, phonemizer 3.4 (\texttt{results/environment.json}). \textbf{Hardware:} main runs on a Colab GPU (\ph{GPU model}); 3k runs and all evaluation on an Apple M4 laptop (16\,GB, PyTorch MPS). A smoke mode runs the whole notebook end to end in minutes.
 
 % =====================================================================
-% 4. EXPERIMENTAL DESIGN  (~1.5 pages)
+% 4. CONTROLLED EXPERIMENTS
 % =====================================================================
-\section{Experimental Design}\label{sec:expdesign}
-% HD: >=2 controlled experiments with a clear comparison goal; protocol explicit and CONSISTENT WITH THE CODE.
+\section{Controlled Experiments}\label{sec:expdesign}
+\subsection{Experiment design}
+\begin{itemize}
+  \item \textbf{Objective} (\expA\ vs \expC, \expB\ vs \expD). \emph{Why:} the defining choice between FastSpeech-style and Matcha-style models. \textbf{H1:} regression over-smooths, so it is less natural and scores worse on quality metrics. \textbf{H2:} regression is faster (1 decoder pass vs 10).
+  \item \textbf{Depth} (\expA\ vs \expB, \expC\ vs \expD). \emph{Why:} model size drives cost on small devices. \textbf{H3:} 4 blocks are faster with a small quality loss, larger for flow matching, which must model a whole distribution.
+  \item \textbf{Data size} (each experiment, 3{,}000 vs 10{,}480 utterances). \emph{Why:} data is the cost that scales a voice. \textbf{H4:} more data mainly improves the duration predictor and hence rhythm; regression, which over-fitted earliest on the subset, gains most. With a fixed epoch budget the full-data runs also take 3.5$\times$ more updates, so data size and update count change together.
+\end{itemize}
+\textbf{Shared settings:} Adam (lr $10^{-4}$), batch 32, gradient clipping 1.0, seed 42, 300 epochs (327 steps per epoch on full data, 93 on the subset). \texttt{best.ckpt} is the epoch with the lowest validation loss within each run. Total losses are not comparable across objectives (velocity MSE vs mel $L_1$), so runs are compared only through the duration and prior losses, which come from identical modules, and through the test-set metrics.
 
-\subsection{Data Protocol}
-\textbf{Dataset.} We use LJSpeech~1.1 \citep{ito2017ljspeech}: 13{,}100 clips (23.92\,h) of one female speaker, 22{,}050\,Hz mono 16-bit. All files were checked for format, readability and a matching transcript (nb §1.1.6). The metadata must be parsed with \texttt{QUOTE\_NONE}; otherwise quote characters swallow the delimiter and 16 transcripts appear empty.
-
-\noindent\textbf{Split.} 80/10/10 (10{,}480 / 1{,}310 / 1{,}310 clips). The IDs are sorted and shuffled with \texttt{numpy} seed 42, and the split's MD5 is \texttt{78fda0eda5bbdcaecb57fd47e9b20610}. Each experiment trains on the same seeded \textbf{3{,}000-utterance subset} of the training split (5.5\,h). A fixed 300-clip subset of validation is scored every epoch. The test split is held out for evaluation.
-
-\noindent\textbf{Preprocessing} (Table~\ref{tab:preproc}). Every choice was driven by a measurement of the raw data (nb §1.1.7).
+\subsection{Experiments table}
 \begin{table}[h]
 \centering\small
-\caption{Preprocessing decisions and the evidence for each.}
-\label{tab:preproc}
-\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}X@{}}
-\toprule
-Step & Choice & Evidence / reason \\ \midrule
-Sample rate & keep 22{,}050\,Hz & all files already 22{,}050\,Hz; equal to the vocoder's rate \\
-Silence & trim edges, \texttt{top\_db}=40 & leading $\approx$0\,s but trailing $\approx$80\,ms in almost every clip; MAS would otherwise attach it to the last phoneme. Removes 1.2\% of the audio; no clip loses more than half its length \\
-Loudness & none & speech RMS spread of only 1.25\,dB across clips \\
-Text source & normalised column & raw: 1{,}489 clips with digits; normalised: 0 \\
-Abbreviations & expand (\textit{Mr.} $\rightarrow$ \textit{mister}) & still present in 573 normalised transcripts \\
-Numbers & spell out (\texttt{num2words}) & needed for arbitrary input at inference \\
-Tokens & IPA phonemes, stress marks & 55 symbols; average 105 tokens per clip \\
-Mel & 80-band log-mel matching HiFi-GAN; global mean/std from the training subset & vocoder compatibility; no leakage \\ \bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{Controlled Variables and Hypotheses}
-We use a $2\times2$ factorial design (Table~\ref{tab:settings}). Each comparison changes exactly one variable, and this is asserted in code (nb §1.3.3).
-\begin{itemize}
-  \item \textbf{Objective} (\expA\ vs \expC, \expB\ vs \expD): flow matching vs regression at equal depth.
-  \item \textbf{Depth} (\expA\ vs \expB, \expC\ vs \expD): 8 vs 4 residual blocks with the same objective.
-\end{itemize}
-\textbf{H1:} regression decoders produce over-smoothed mels, so their speech sounds more muffled and scores worse on quality metrics.
-\textbf{H2:} regression is faster at inference: one decoder pass versus ten.
-\textbf{H3:} the 4-block decoders are faster with a small quality loss, and depth matters more for flow matching, which must model a whole distribution.
-
-\subsection{Training and Selection Protocol}
-\begin{itemize}
-  \item \textbf{Shared settings:} Adam (lr $10^{-4}$), batch 32, gradient clipping 1.0 and 300 epochs (93 steps per epoch, 27{,}900 steps in total) for every experiment, seed 42, on an Apple M4 (PyTorch MPS).
-  \item \textbf{Validation:} the validation loss is computed every epoch on the same 300 clips with a fixed random seed, so the noisy flow loss is comparable across epochs.
-  \item \textbf{Checkpoints:} \texttt{best.ckpt} is the epoch with the lowest validation loss \emph{within} each experiment. Milestone checkpoints are kept at epochs 75, 150, 225 and 300.
-  \item \textbf{Comparability:} total losses are not comparable across objectives (velocity MSE vs mel $L_1$). Cross-experiment comparison therefore uses only the evaluation metrics in Section~\ref{sec:results}, plus the duration and prior losses, which come from identical modules.
-\end{itemize}
-
-\begin{table}[h]
-\centering\small
-\caption{Experiment settings. Bold marks the controlled variables; everything else is identical. Training time excludes one 13.6-hour stall caused by the laptop sleeping during \expA.}
+\caption{Experiment settings and key outcomes. Bold marks the controlled variables; everything else is identical. WER on the 100-sentence test sample (Section~\ref{sec:results}); RTF on the laptop CPU.}
 \label{tab:settings}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
@@ -269,131 +221,189 @@ We use a $2\times2$ factorial design (Table~\ref{tab:settings}). Each comparison
 \textbf{Decoder objective} & \textbf{flow matching} & \textbf{flow matching} & \textbf{regression} & \textbf{regression} \\
 \textbf{Decoder blocks} & \textbf{8} & \textbf{4} & \textbf{8} & \textbf{4} \\
 Parameters (total / decoder) & 7.50 / 4.27\,M & 5.66 / 2.43\,M & 6.43 / 3.20\,M & 4.85 / 1.62\,M \\
-Decoder passes at inference & 10 & 10 & 1 & 1 \\
-Data / split / seed & \multicolumn{4}{c}{3{,}000 utts \quad / \quad 80/10/10 \quad / \quad 42} \\
-Epochs / batch / lr & \multicolumn{4}{c}{300 \quad / \quad 32 \quad / \quad $10^{-4}$} \\
-Best epoch (val. loss) & 281 (1.942) & \ph{} & \ph{} & \ph{} \\
-Training time & 4.7\,h & \ph{} & \ph{} & \ph{} \\ \bottomrule
+Decoder passes at inference & 10 & 10 & 1 & 1 \\ \midrule
+\multicolumn{5}{@{}l}{\textit{Main runs: full training split (10{,}480 utterances), Colab GPU}} \\
+Best epoch (val.\ loss) & 207 (1.789) & 200 (1.795) & 224 (1.815) & 174 (1.810) \\
+Val.\ duration loss at best & 0.439 & 0.434 & 0.466 & 0.463 \\
+Training time (s/epoch) & 0.93\,h (11.2) & 0.71\,h (8.5) & 0.92\,h (11.0) & 0.69\,h (8.3) \\
+\textbf{Test WER (\%)} & 3.99 & 4.83 & \textbf{2.84} & 3.14 \\
+CPU RTF & 0.128 & 0.140 & 0.141 & 0.132 \\ \midrule
+\multicolumn{5}{@{}l}{\textit{Data-size runs: 3{,}000-utterance subset, Apple M4}} \\
+Best epoch (val.\ loss) & 281 (1.942) & 299 (1.947) & 78 (2.004) & 67 (2.015) \\
+Val.\ duration loss at best & 0.546 & 0.546 & 0.594 & 0.596 \\
+Training time & 4.5\,h & 3.4\,h & 4.0\,h & 3.0\,h \\
+\textbf{Test WER (\%)} & 13.41 & 13.78 & 6.40 & 7.67 \\ \bottomrule
 \end{tabular}
 \end{table}
 
 % =====================================================================
-% 5. RESULTS AND EVALUATION  (~2.5 pages)
+% 5. EVALUATION & RESULTS
 % =====================================================================
-\section{Results and Evaluation}\label{sec:results}
-% HD: metrics reported clearly AND INTERPRETED; audio evidence USED in a reasoned trade-off discussion.
-
-\subsection{Evaluation Protocol}
-\begin{itemize}
-  \item \textbf{Speed:} RTF = synthesis time $/$ audio duration, and latency per sentence (mean $\pm$ std, after \ph{3} warm-up runs and \ph{N} timed repeats, on \ph{device}). Both are measured for the acoustic model plus vocoder.
-  \item \textbf{Intelligibility:} WER and CER of Whisper \citep{radford2022whisper} transcripts of \ph{N} test sentences, against our normalised text. Ground-truth recordings give the upper bound.
-  \item \textbf{Quality:} \ph{MCD \citep{kubichek1993mcd} against the test recordings, with DTW, and/or UTMOS predicted MOS}.
-  \item \textbf{Listening evidence:} \ph{10+} prompts per experiment (\texttt{wav\_examples/expX\_NN.wav}), including hard cases (numbers, long sentences, questions, names).
-\end{itemize}
-
-\subsection{Training Behaviour}
-\ph{Figure: training curves (results/figures/1\_3\_training\_curves.png). One or two sentences: all runs converged; validation loss flattened after about epoch 200; duration and prior losses compared across runs.}
-% \begin{figure}[h]\centering\includegraphics[width=\linewidth]{figures/1_3_training_curves.png}
-% \caption{Training curves. Solid: flow matching; dashed: regression; star: best.ckpt.}\label{fig:curves}\end{figure}
-
-\subsection{Objective Metrics}
+\section{Evaluation and Results}\label{sec:results}
+\subsection{Metrics and protocol}\label{sec:metrics}
+No single number captures speech quality, so each metric answers one question and its blind spot is covered by another (Table~\ref{tab:metrics}). Ten systems synthesise the same test sentences: the real recording (upper bound), the \emph{vocoded} recording (real mel $\rightarrow$ HiFi-GAN: the best our pipeline can do with a perfect acoustic model), and \expA--\expD\ at both data sizes. Synthesis noise is seeded per sentence, so all flow models see the same noise. Uncertainty is a 95\% bootstrap interval over sentences (1{,}000 resamples); differences use a \emph{paired} bootstrap on the same resampled sentences.
 \begin{table}[h]
 \centering\small
-\caption{Objective results on the test set (\ph{N} sentences; device \ph{}). Arrows show the better direction; best values in bold.}
-\label{tab:results}
-\begin{tabular}{@{}lcccccc@{}}
+\caption{Evaluation metrics: what each measures, why we chose it, and its limitation.}
+\label{tab:metrics}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.3cm}@{}}
 \toprule
- & RTF $\downarrow$ & Latency (s) $\downarrow$ & WER (\%) $\downarrow$ & CER (\%) $\downarrow$ & \ph{MCD (dB)} $\downarrow$ & \ph{UTMOS} $\uparrow$ \\ \midrule
-\expA\ flow, 8 & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} \\
-\expB\ flow, 4 & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} \\
-\expC\ regr., 8 & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} \\
-\expD\ regr., 4 & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} \\ \midrule
-Ground truth & -- & -- & \ph{} & \ph{} & 0 & \ph{} \\
-Vocoded ground truth & -- & -- & \ph{} & \ph{} & \ph{} & \ph{} \\ \bottomrule
-\end{tabular}
-\end{table}
-
-\noindent\textbf{RQ1, the objective.} \ph{Interpret A vs C and B vs D. Is the difference larger than the spread between sentences? Does it support H1 and H2?}
-
-\noindent\textbf{RQ2, depth.} \ph{Interpret A vs B and C vs D. Does it support H3? Is there an interaction between objective and depth?}
-
-\noindent\textbf{ODE steps (optional).} \ph{RTF and quality of \expA\ at 2, 4, 10 and 20 steps: where is the knee of the quality--speed curve?}
-
-\subsection{Qualitative Evidence}
-\ph{Listening notes tied to specific files, e.g. ``\texttt{expC\_04.wav} sounds muffled and buzzy on vowels, while \texttt{expA\_04.wav} is crisp.'' If possible, give blind A/B preference counts from the group (n = 3 listeners $\times$ 10 prompts).}
-
-\ph{Figure: mel spectrograms of one test sentence (ground truth, \expA, \expC). Regression should show blurred harmonics, which is the visual evidence for H1.}
-% \begin{figure}[h]\centering\includegraphics[width=\linewidth]{figures/spec_compare.png}
-% \caption{Mel spectrograms of test sentence LJ0XX-XXXX.}\label{fig:spec}\end{figure}
-
-\subsection{Trade-offs}
-\ph{Quality vs speed: plot quality metric against RTF for the four runs (and the step sweep), and name the Pareto-optimal variants. Model size vs quality. Training cost vs gain.}
-
-% =====================================================================
-% 6. ERROR ANALYSIS AND IMPROVEMENT PROPOSALS  (~1.25 pages)
-% =====================================================================
-\section{Error Analysis and Improvements}
-% HD: >=2 COMMON failure modes with evidence + realistic, technically grounded improvements.
-% Candidate failure modes to check by listening and from the Whisper transcripts:
-%  - over-smoothed / muffled spectra (regression)        - wrong pronunciation from the front-end (e.g. "St." -> "saint" in "St. Louis Street")
-%  - unnatural durations / rushed long sentences          - flat or wrong intonation on questions
-%  - artefacts at the end of utterances (trimming)        - degradation on long or out-of-domain inputs (numbers, foreign names)
-\begin{table}[h]
-\centering\small
-\caption{Common failure modes, the evidence for each, likely causes and proposed fixes.}
-\label{tab:errors}
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
-\toprule
-Failure mode & Evidence (file / metric) & Likely cause & Proposed fix \\ \midrule
-\ph{1} & \ph{} & \ph{} & \ph{} \\
-\ph{2} & \ph{} & \ph{} & \ph{} \\
-\ph{3} & \ph{} & \ph{} & \ph{} \\ \bottomrule
+Metric & How & Why chosen & Limitation \\ \midrule
+WER / CER $\downarrow$ & Whisper \texttt{small.en} \citep{radford2022whisper} transcript vs the input text; both normalised identically (``1963'' = ``nineteen sixty-three'') & intelligibility without listeners; reproducible; sensitive to slurred, skipped or mispronounced words & rewards clarity, not naturalness; Whisper's own errors (1.6\% on real speech) \\
+MCD (dB) $\downarrow$ & WORLD envelope $\rightarrow$ SPTK mel-cepstrum (order 24, $\alpha{=}0.455$, $c_0$ dropped), DTW-aligned \citep{kubichek1993mcd} & standard objective proxy for spectral fidelity to the real speaker & favours the average spectrum, i.e.\ regression \\
+Duration ratio $\rightarrow 1$ & synthesised / recorded length & checks the duration predictor (speaking rate) & ignores pause placement \\
+RTF, latency $\downarrow$ & text $\rightarrow$ wav, per stage; medians of 36 runs per model (12 prompts $\times$ 3, after 2 warm-ups), GPU queue synchronised; on MPS and CPU & cost of deployment; RTF $<1$ = faster than real time & hardware-specific \\
+Listening, spectrograms & 12 prompts $\times$ every model; mel images & naturalness and artefacts, which no metric above captures & subjective; small panel \\ \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\ph{One paragraph per failure mode: the example, why it happens (link to the architecture or the data), and how the fix would address it (e.g. a U-Net + Transformer decoder as in full Matcha-TTS, a pitch/energy predictor as in FastSpeech~2, context-dependent abbreviation rules, training on the full 10{,}480 clips).}
+\noindent An earlier MCD computed from our own 80-band log-mels was rejected after a sanity check: faint noise at 30\,dB SNR scored worse than our models, because the log floor of near-silent bands dominated. The WORLD/SPTK version behaves as expected (nb §1.4.1.3): a time-stretched copy of a recording scores 5.0\,dB, faint noise 7.1\,dB and a different sentence 11.8\,dB.
+
+\subsection{Objective results}
+\begin{table}[h]
+\centering\small
+\caption{Test-set results (seeded sample of 100 test sentences, 1{,}790 words \ph{full test split}). Brackets: 95\% bootstrap CI. Best synthetic system in bold.}
+\label{tab:results}
+\begin{tabular}{@{}llllc@{}}
+\toprule
+System & WER (\%) $\downarrow$ & CER (\%) $\downarrow$ & MCD (dB) $\downarrow$ & Dur.\ ratio \\ \midrule
+Recording & 1.63 \ci{0.94}{2.46} & 0.67 \ci{0.32}{1.07} & 0 & 1.00 \\
+Vocoded recording & 1.75 \ci{1.06}{2.54} & 0.65 \ci{0.31}{1.06} & \ph{} & 1.00 \\ \midrule
+\expA\ flow, 8 & 3.99 \ci{2.76}{5.39} & 1.79 \ci{1.24}{2.39} & \ph{} & 0.92 \\
+\expB\ flow, 4 & 4.83 \ci{3.58}{6.36} & 1.94 \ci{1.34}{2.64} & \ph{} & 0.92 \\
+\expC\ regression, 8 & \textbf{2.84} \ci{1.89}{4.06} & \textbf{1.03} \ci{0.60}{1.51} & \ph{} & 0.91 \\
+\expD\ regression, 4 & 3.14 \ci{2.17}{4.35} & 1.20 \ci{0.76}{1.71} & \ph{} & 0.91 \\ \midrule
+\expA\ 3k subset & 13.41 \ci{10.77}{16.60} & 6.65 \ci{5.28}{8.31} & \ph{} & 0.90 \\
+\expB\ 3k subset & 13.78 \ci{11.34}{16.56} & 6.82 \ci{5.58}{8.19} & \ph{} & 0.92 \\
+\expC\ 3k subset & 6.40 \ci{5.01}{7.94} & 3.01 \ci{2.29}{3.80} & \ph{} & 0.86 \\
+\expD\ 3k subset & 7.67 \ci{6.26}{9.19} & 3.72 \ci{2.91}{4.55} & \ph{} & 0.87 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Controlled comparisons: change in WER (percentage points) from the first to the second system, with a paired bootstrap 95\% CI. Negative = the second system is better; \checkmark\ = CI excludes 0.}
+\label{tab:compare}
+\begin{tabular}{@{}lllc|lllc@{}}
+\toprule
+Variable & Comparison & $\Delta$WER & & Variable & Comparison & $\Delta$WER & \\ \midrule
+objective & A $\rightarrow$ C & $-1.15$ \ci{$-2.21$}{$-0.06$} & \checkmark & data size & A: 3k $\rightarrow$ full & $-9.43$ \ci{$-11.67$}{$-7.37$} & \checkmark \\
+objective & B $\rightarrow$ D & $-1.69$ \ci{$-3.05$}{$-0.43$} & \checkmark & data size & B: 3k $\rightarrow$ full & $-8.94$ \ci{$-11.51$}{$-6.66$} & \checkmark \\
+depth & A $\rightarrow$ B & $+0.85$ \ci{$-0.45$}{$+2.12$} & & data size & C: 3k $\rightarrow$ full & $-3.56$ \ci{$-4.82$}{$-2.49$} & \checkmark \\
+depth & C $\rightarrow$ D & $+0.30$ \ci{$-0.28$}{$+0.92$} & & data size & D: 3k $\rightarrow$ full & $-4.53$ \ci{$-5.91$}{$-3.22$} & \checkmark \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Speed on the Apple M4 (medians of 36 runs per model and device). The vocoder is identical in all runs.}
+\label{tab:speed}
+\begin{tabular}{@{}l|ccc|ccc@{}}
+\toprule
+ & \multicolumn{3}{c|}{GPU (MPS)} & \multicolumn{3}{c}{CPU} \\
+ & RTF & latency (s) & acoustic model (s) & RTF & latency (s) & acoustic model (s) \\ \midrule
+\expA\ flow, 8 & 0.043 & 0.187 & 0.036 & 0.128 & 0.523 & 0.053 \\
+\expB\ flow, 4 & 0.042 & 0.184 & 0.023 & 0.140 & 0.500 & 0.035 \\
+\expC\ regression, 8 & 0.041 & 0.169 & 0.008 & 0.141 & 0.545 & 0.011 \\
+\expD\ regression, 4 & 0.038 & 0.167 & 0.006 & 0.132 & 0.535 & 0.006 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{RQ1, objective.} Regression was \emph{more} intelligible than flow matching at equal depth (Table~\ref{tab:compare}: $-1.2$ and $-1.7$ points, both CIs exclude 0), at both data sizes. H1 is therefore \emph{rejected for intelligibility}. Two observations explain it. First, flow matching \emph{samples}: noise at temperature 0.667 adds variability that occasionally blurs a phoneme, while regression outputs the clear, averaged spectrum that ASR favours. Second, the step sweep (Table~\ref{tab:sweep}) shows that fewer Euler steps, which keep the sample closer to the mean, \emph{lower} \expA's WER (4.3\% at 1 step vs 5.7\% at 10). The flow decoder's expected advantage is naturalness, which WER does not measure; MCD \ph{interpret: MCD for C vs A} and the listening notes (Section~\ref{sec:qual}) address it. H2 holds for the acoustic model, regression being 4.5$\times$ faster on the GPU and 5$\times$ on the CPU, but \emph{not end to end}: HiFi-GAN takes 81--99\% of synthesis time, so all four run at RTF 0.04 on the GPU and 0.13--0.14 on the CPU, 7--25$\times$ faster than real time.
+
+\noindent\textbf{RQ2, depth.} Halving the decoder (\expA$\rightarrow$\expB: $-1.84$\,M parameters; \expC$\rightarrow$\expD: $-1.58$\,M) changed WER by under one point, and neither CI excludes 0. The loss was larger for flow matching (+0.85 vs +0.30), the direction H3 predicts, but not significantly. Validation losses agree: within each objective the two depths differ by under 0.01. The 4-block models are 1.5--2$\times$ faster in the acoustic model, which again barely affects end-to-end speed.
+
+\noindent\textbf{RQ3, data size.} Data size had by far the largest effect: 3.5$\times$ more data cut WER by 9.4 and 8.9 points for flow matching (about 3.3$\times$) and by 3.6 and 4.5 points for regression (about 2.3$\times$), all CIs far from 0. The duration predictor confirms H4's mechanism: on the subset it over-fitted (\expA: training duration loss 0.41 vs validation 0.55); on full data the gap shrank (0.38 vs 0.44) and the speaking rate moved closer to the speaker's (duration ratio 0.86--0.92 $\rightarrow$ 0.91--0.92). The regression runs over-fitted the subset early (best epochs 78 and 67, then rising validation loss) but not the full split (best epochs 224 and 174). Contrary to H4, however, \emph{flow matching} gained most: learning a distribution needs more data than learning its mean, so the generative decoder is the more data-hungry one.
+
+\noindent\textbf{Training behaviour and checkpoint selection.} Figure~\ref{fig:curves} shows that all full-data runs converged smoothly with no over-fitting. \ph{validation re-score: correlation between the 300-clip monitor and all 1,310 validation clips across saved checkpoints, and whether best.ckpt is also lowest on the full split (nb §1.4.1.8)}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/training_curves.pdf}
+\caption{Training curves. Left: validation loss of the four full-data runs ($\star$ = \texttt{best.ckpt}; total losses are comparable only within an objective). Middle and right: duration loss on validation and training data, full data (solid) vs the 3k subset (dotted). The 3k runs show a large train--validation gap: over-fitted durations.}
+\label{fig:curves}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{\expA\ at different numbers of Euler steps (50 test sentences). The 1-step RTF includes the first-call warm-up.}
+\label{tab:sweep}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Euler steps & 1 & 2 & 4 & 10 (default) & 20 \\ \midrule
+WER (\%) & 4.29 & 4.57 & 4.57 & 5.68 & 5.54 \\
+MCD (dB) & \ph{} & \ph{} & \ph{} & \ph{} & \ph{} \\
+RTF (GPU) & 0.068 & 0.040 & 0.039 & 0.042 & 0.047 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Qualitative evaluation}\label{sec:qual}
+\textbf{Prompts.} Twelve prompts, none from LJSpeech, were synthesised by every model (\texttt{wav\_examples/expX\_NN.wav}; 3k versions in \texttt{results/wav\_subset/}). They target hard cases: a date, ordinal, money and time with \textit{Mr.} (03), a question (04), ambiguous abbreviations and a house number (\textit{Dr.\ Smith lives at 221 Baker St.}, 06), an exclamation with a contraction (10), a tongue twister (08) and a 25-word sentence (12).
+
+\noindent\textbf{Spectrograms} (Figure~\ref{fig:spec}). The full-data flow model reproduces the harmonic stripes and the high-frequency noise of fricatives most like the recording; the regression model's harmonics are smoother and more uniform, the visual signature of averaging; the 3k model's segments are shorter and more uniform in length, consistent with its over-fitted durations.
+
+\noindent\textbf{Listening notes.} \ph{group: per experiment, naturalness / clarity / rhythm / artefacts with file names, e.g. ``expC\_04 is clear but flat on the question; expA\_04 rises naturally''; blind A/B preference counts expA vs expC (3 listeners $\times$ 12 prompts)}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/spectrograms.png}
+\caption{Log-mel spectrograms of test sentence LJ003-0147 (\textit{``Besides the jail fees, there was garnish of half-a-guinea\ldots''}, first 3\,s): the recording, \expA\ and \expC\ trained on full data, and \expA\ trained on the 3k subset.}
+\label{fig:spec}
+\end{figure}
 
 % =====================================================================
-% 7. CONCLUSION AND RECOMMENDATIONS  (~0.75 page)
+% 6. DISCUSSION
+% =====================================================================
+\section{Discussion}
+\subsection{System design justification}
+The pipeline follows the Glow-TTS/Matcha-TTS family because each constraint pointed to it (Table~\ref{tab:justify}): phonemes compensate for a small single-speaker corpus; MAS removes the need for an external aligner and makes alignment failures impossible; a non-autoregressive model is fast enough for real time on a CPU; and a frozen, matched HiFi-GAN delivers high-fidelity audio without days of vocoder training. The evidence supports the choice: the vocoder costs only 0.1 WER points over the real recording, alignments never skipped words, and a full training run fits in under an hour on a free GPU. The cost of the compact 1-D convolutional decoder (instead of Matcha's U-Net with Transformer blocks) is capacity, which is the most likely reason the flow decoder did not out-perform regression (Section~\ref{sec:errors}).
+
+\subsection{Error analysis}\label{sec:errors}
+We inspected the sentences with the highest WER and listened to the prompts. Of 100 test sentences, 41 were transcribed perfectly for all four full-data models and 16 contained an error for all four, which points to causes shared by every model, in the front-end and the duration predictor, rather than the decoder.
+
+\noindent\textbf{Failure 1: front-end errors on abbreviations, initials and rare names.} \emph{Evidence:} \textit{``Baker St.''} is normalised to \textit{``baker saint''} (prompt 06); the initials in \textit{``O.\,H.\ Lee''} keep their full stops and are read with sentence-final pauses, transcribed \textit{``OH, Leon''} (\expA) and \textit{``OH, Lee''} (\expC); rare names are mispronounced by espeak-ng (\textit{Esagil} $\rightarrow$ \textit{Esajil}, \textit{De Mohrenschildt} $\rightarrow$ \textit{De Moren-Skeltt}). \emph{Cause:} the abbreviation rules are context-free, initials are not recognised as such, and the grapheme-to-phoneme rules have never seen the names. The model can only say the phonemes it is given. \emph{Fix:} context rules (\textit{St.} after a capitalised word $\rightarrow$ \textit{street}; before a name $\rightarrow$ \textit{saint}), spelling out single capital letters followed by a full stop (\textit{O.\,H.} $\rightarrow$ \textit{oh aitch}) without a pause, and a small pronunciation lexicon for names that occur in LJSpeech.
+
+\noindent\textbf{Failure 2: rushed speech that blurs word boundaries.} \emph{Evidence:} every model speaks 8--9\% faster than the speaker (duration ratio 0.91--0.92; 0.86 for the 3k regression models), and the typical errors merge or split words at boundaries: \textit{``not idle''} $\rightarrow$ \textit{``nut isle''}, \textit{``Forrester, after''} $\rightarrow$ \textit{``forced her after''}. \emph{Cause:} the duration predictor regresses \emph{log}-durations with MSE, which estimates the geometric mean of each phoneme's duration, below its arithmetic mean; short, unstressed phonemes and pauses at commas lose the most. The shortfall was larger on the subset, where durations over-fitted. \emph{Fix:} at inference, a global \texttt{length\_scale} of about 1.09 (one line, no retraining); in training, a loss on linear durations or a stochastic duration predictor \citep{kim2021vits}, and explicit pause tokens at punctuation.
+
+\noindent\textbf{Failure 3 (flow models): occasional slurred phonemes from sampling.} \emph{Evidence:} flow matching has higher WER than regression at both sizes, and fewer sampling steps reduce it (Table~\ref{tab:sweep}). \emph{Cause:} sampling noise (temperature 0.667) through a small decoder that has not fully learned the distribution. \emph{Fix:} lower temperature (0.3--0.5) for intelligibility-critical use, and a higher-capacity decoder (Matcha's U-Net with Transformer blocks) trained on more data, which Section~\ref{sec:results} shows the flow decoder needs most.
+
+\subsection{Trade-off analysis}
+\textbf{Quality vs speed.} For this system the trade-off sits almost entirely in the vocoder: 10 flow-matching steps cost 0.03--0.05\,s per sentence against 0.15\,s (GPU) to 0.5\,s (CPU) for HiFi-GAN. Regression or fewer Euler steps buy little end-to-end speed (RTF 0.043 $\rightarrow$ 0.038 on the GPU), while the step sweep shows the flow model's quality--speed knob is nearly flat from 2 to 20 steps. Real speed gains therefore require a lighter vocoder (HiFi-GAN V2/V3), not a cheaper decoder. \textbf{Training data and time vs quality.} The largest measured trade-off is data: 3.5$\times$ more data, and 3.5$\times$ more updates, cut errors 2.3--3.3$\times$, while training time per run was under one hour on a GPU (vs 3--4.5\,h for the 3k runs on a laptop). Doubling the decoder's depth, by contrast, cost 1.6--1.8\,M parameters for a non-significant gain. \textbf{Data efficiency vs ceiling.} Regression is the safer choice when data is scarce (WER 6.4\% vs 13.4\% on the subset); flow matching closes most of the gap with more data and is the variant expected to benefit from larger models.
+
+% =====================================================================
+% 7. CONCLUSION
 % =====================================================================
 \section{Conclusion and Recommendations}
-\noindent\textbf{Summary.} \ph{What was built, the answers to RQ1 and RQ2 in one sentence each, with numbers.}
+We built a complete text-to-speech system with a from-scratch, Matcha-style acoustic model and a pretrained HiFi-GAN vocoder, and compared four decoders at two data sizes under controlled conditions. \textbf{RQ1:} regression was slightly but significantly more intelligible than flow matching (WER 2.84\% vs 3.99\%), and 5$\times$ faster in the acoustic model, which hardly matters end to end. \textbf{RQ2:} 4 decoder blocks were as good as 8 within measurement error. \textbf{RQ3:} training data dominated: 3.5$\times$ more data cut errors 2.3--3.3$\times$, most for flow matching.
 
-\noindent\textbf{Recommendation.} \ph{The preferred variant and the evidence, e.g. ``expA where quality matters; expB/expD for real-time on CPU''.}
+\noindent\textbf{Recommendation.} Deploy \expD\ (regression, 4 blocks, 4.85\,M parameters): it is within 0.3 WER points of the best model and the cheapest to run, at 0.17\,s per sentence on a laptop GPU and 0.54\,s on a CPU. Prefer \expA\ only if listening tests show a clear naturalness advantage \ph{confirm with listening results}.
 
-\noindent\textbf{Scaling considerations.}
-\begin{itemize}
-  \item \textbf{Data:} \ph{the full 10{,}480-clip training split is 3.5$\times$ our subset; the expected effect and the training-time estimate (about 3.5$\times$ per epoch).}
-  \item \textbf{Compute:} \ph{a GPU for training; inference RTF on CPU vs GPU; batching for throughput.}
-  \item \textbf{Serving:} \ph{model size (7.5\,M + vocoder), latency per sentence, streaming by sentence, number of ODE steps as a run-time quality/speed knob.}
-  \item \textbf{More speakers and languages:} \ph{a speaker embedding; an espeak-ng front-end supports about 100 languages.}
-\end{itemize}
+\noindent\textbf{Deployment and scaling.} (i) \emph{What breaks first} is vocoder throughput: HiFi-GAN takes over 80\% of the compute, so under load it should be batched across requests on a GPU, or replaced by a lighter generator on CPU-only servers. (ii) \emph{Latency} for long texts: synthesise sentence by sentence and stream, since a sentence returns in 0.2--0.5\,s. (iii) \emph{Quality} scales with data first (RQ3), then model capacity; a new voice needs 10--20\,h of clean recordings, or a multi-speaker model with a speaker embedding fine-tuned on less. (iv) \emph{Languages:} espeak-ng covers about 100 languages, but the normaliser rules are English-specific. (v) Training cost is modest: under 1\,GPU-hour per voice at this size.
 
-\noindent\textbf{Limitations.} A single speaker; a 5.5\,h subset; one seed per configuration, so run-to-run variance is not measured; automatic metrics in place of a formal MOS test; and a vocoder trained on all of LJSpeech, including our test clips. The vocoder is identical across experiments, so the comparison stays fair, but its absolute quality is optimistic.
+\noindent\textbf{Future improvements.} Context-aware normalisation and a name lexicon (Failure 1); duration correction and pause tokens (Failure 2); a U-Net/Transformer flow decoder with lower sampling temperature (Failure 3); a predicted-MOS metric (e.g.\ UTMOS) and a formal listening test; several seeds per configuration.
+
+\noindent\textbf{Limitations.} One speaker and one seed per configuration (run-to-run variance unmeasured); test results on a 100-sentence sample \ph{full test split}; automatic metrics in place of a formal MOS test; data size and update count change together in RQ3, and the two sizes were trained on different hardware, so their training times are not comparable; the vocoder was trained on all of LJSpeech, including our test clips, which makes the vocoded upper bound optimistic but affects all systems equally.
 
 % =====================================================================
-% REFERENCES (Harvard)
+% REFERENCES
 % =====================================================================
 \bibliographystyle{agsm}
 \bibliography{references}
 
 % =====================================================================
-% APPENDICES (count towards the 12 pages unless your course says otherwise)
+% APPENDICES (Contribution Appendix does not count towards the 12 pages)
 % =====================================================================
 \appendix
 \section{Contribution Statement}
 \begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}Xc@{}}
 \toprule
-Member & Contribution (code / report / presentation) & Share \\ \midrule
-Varuna Lingam Pavalla Maharudramurthy & \ph{e.g. data pipeline and preprocessing (nb §1.1); Executive Summary, Introduction, Conclusion} & \ph{33\%} \\
-Romeo Lama & \ph{e.g. model and training code (nb §1.2); System Design, Error Analysis} & \ph{33\%} \\
-En Li & \ph{e.g. experiments and evaluation (nb §1.3--1.4); Experimental Design, Results} & \ph{33\%} \\ \bottomrule
+Member & Contribution (code / experiments / report / presentation) & Share \\ \midrule
+Varuna Lingam Pavalla Maharudramurthy & \ph{e.g. integrated notebook, preprocessing, evaluation, report} & \ph{\%} \\
+Romeo Lama & \ph{e.g. acoustic model and training code (Colab prototype), training runs} & \ph{\%} \\
+En Li & \ph{e.g. dataset integrity checks, pretrained-model benchmarks, training runs} & \ph{\%} \\ \bottomrule
 \end{tabularx}
 
 \section{Use of Generative AI}
-\ph{Tools used and what for (e.g. code scaffolding, debugging, wording). State what the group verified itself: all numbers come from the notebook outputs; all citations were checked against the papers.}
-
-\section{Reproducibility}
-Code: \texttt{notebook/A3\_final.ipynb}, which writes the \texttt{tts/} package. Configs: \texttt{configs/expA--D.json}. Split: \texttt{results/splits/} (MD5 above). Environment: Python 3.13.2, PyTorch 2.14.1, librosa 1.0.0, phonemizer 3.4.0, espeak-ng 1.52.0 (\texttt{results/environment.json}). Inference: \texttt{python scripts/synth.py --text "..." --exp expA --out out.wav}.
+\ph{Tools used and what for (e.g. code scaffolding, debugging, documentation, wording). State what the group verified itself: every number comes from the notebook outputs; listening tests; citations checked against the papers.}
 
 \end{document}

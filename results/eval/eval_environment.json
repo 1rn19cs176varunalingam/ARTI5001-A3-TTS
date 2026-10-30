@@ -1,0 +1,7 @@
+{
+ "python": "3.13.2",
+ "torch": "2.14.1",
+ "device": "mps",
+ "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+ "processor": "arm"
+}
