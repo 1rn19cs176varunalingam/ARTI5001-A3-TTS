@@ -119,7 +119,7 @@ if __name__ == "__main__":
     ap.add_argument("--config", required=True)
     ap.add_argument("--proc_dir", required=True)
     ap.add_argument("--mel_dir", required=True)
-    ap.add_argument("--ckpt_root", default="checkpoints/runs")
+    ap.add_argument("--ckpt_root", default="checkpoints/runs_full")
     a = ap.parse_args()
     c = json.loads(Path(a.config).read_text())
     train({**c, "proc_dir": a.proc_dir, "mel_dir": a.mel_dir, "ckpt_dir": str(Path(a.ckpt_root) / c["name"])})

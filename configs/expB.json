@@ -2,7 +2,7 @@
   "name": "expB",
   "seed": 42,
   "split_md5": "78fda0eda5bbdcaecb57fd47e9b20610",
-  "n_train_utts": 3000,
+  "n_train_utts": 10480,
   "epochs": 300,
   "batch_size": 32,
   "lr": 0.0001,

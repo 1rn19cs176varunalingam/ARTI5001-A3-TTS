@@ -1,4 +1,4 @@
-"""Dataset over the cached features of §1.1.10: (phoneme ids, normalised log-mel)."""
+"""Dataset over the cached features of §1.10: (phoneme ids, normalised log-mel)."""
 import json, torch
 from torch.utils.data import Dataset
 from tts.text import PAD_ID

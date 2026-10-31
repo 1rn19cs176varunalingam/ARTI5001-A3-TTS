@@ -35,12 +35,12 @@ def synthesize(text, model, vocoder, vocab, mel_stats, n_steps=10, temperature=0
     device = next(model.parameters()).device
     ids = torch.tensor([text_to_ids(text, vocab)], device=device)
     mel, _ = model.synthesise_mel(ids, n_steps=n_steps, temperature=temperature, length_scale=length_scale)
-    # undo the §1.1.10.4 normalisation: HiFi-GAN expects raw log-mels
+    # undo the §1.10.4 normalisation: HiFi-GAN expects raw log-mels
     wav = vocoder(mel * mel_stats["mel_std"] + mel_stats["mel_mean"]).squeeze().clamp(-1, 1).cpu().numpy()
     return wav.astype(np.float32), SR, mel
 
 
-def synthesize_to_wav(text, exp="expA", out_path=None, ckpt="best", ckpt_root="checkpoints/runs",
+def synthesize_to_wav(text, exp="expA", out_path=None, ckpt="best", ckpt_root="checkpoints/runs_full",
                       vocoder_path="checkpoints/hifigan_lj_v1", **kw):
     """One call from text to a playable .wav: the notebook / CLI entry point."""
     device = pick_device()
@@ -64,7 +64,7 @@ def main():
     ap.add_argument("--exp", default="expA", help="expA | expB | expC | expD")
     ap.add_argument("--ckpt", default="best", help="best | last | epoch_XXX")
     ap.add_argument("--out", default="wav_examples/output.wav")
-    ap.add_argument("--ckpt_root", default="checkpoints/runs")
+    ap.add_argument("--ckpt_root", default="checkpoints/runs_full")
     ap.add_argument("--vocoder", default="checkpoints/hifigan_lj_v1")
     ap.add_argument("--steps", type=int, default=10, help="ODE steps (flow-matching decoders only)")
     a = ap.parse_args()

@@ -1,4 +1,4 @@
-"""Objective evaluation (notebook §1.4): intelligibility, spectral distance, rhythm, speed, step sweep, validation re-score.
+"""Objective evaluation (notebook §4): intelligibility, spectral distance, rhythm, speed, step sweep, validation re-score.
 
 Metrics
   - WER / CER: Whisper small.en (Radford et al., 2022) transcribes each clip; reference and transcript go through the
@@ -26,7 +26,7 @@ EXPS = ["expA", "expB", "expC", "expD"]
 
 # ---------------------------------------------------------------- data
 def load_metadata(data_dir):
-    """LJSpeech metadata; QUOTE_NONE so quote characters are not treated as CSV quoting (see §1.1.6)."""
+    """LJSpeech metadata; QUOTE_NONE so quote characters are not treated as CSV quoting (see §1.6)."""
     return pd.read_csv(Path(data_dir) / "metadata.csv", sep="|", header=None, quoting=csv.QUOTE_NONE,
                        names=["id", "raw", "norm"], dtype=str).set_index("id")
 
@@ -76,7 +76,7 @@ class Whisper:
 
 # ---------------------------------------------------------------- systems
 def make_systems(device, vocoder, runs):
-    """name -> fn(text, recorded wav) -> wav. runs = {"full": ckpt_root, "subset": ckpt_root}; missing roots are skipped."""
+    """name -> fn(text, recorded wav) -> wav. runs = {"full": ckpt_root}; missing roots are skipped."""
     out = {"ground_truth": lambda text, gt: gt,
            "vocoded_gt": lambda text, gt: vocoder(mel_spectrogram(gt)[None].to(device)).squeeze().clamp(-1, 1).cpu().numpy()}
     for run, root in runs.items():

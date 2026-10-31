@@ -3,7 +3,7 @@
 Example (from the repository root):
     python scripts/synth.py --text "Hello world." --exp expA --out wav_examples/hello.wav
 
-The implementation lives in tts/synth.py, which is written by notebook/A3_final.ipynb (§1.2).
+The implementation lives in tts/synth.py, which is written by the notebook (§2).
 """
 import os, platform, sys
 from pathlib import Path

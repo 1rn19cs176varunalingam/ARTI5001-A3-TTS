@@ -1,5 +1,10 @@
 """Text front-end: normalize_text() -> IPA phonemes (espeak-ng via phonemizer) -> integer ids.
-Abbreviation list adapted from keithito/tacotron (https://github.com/keithito/tacotron/blob/master/text/cleaners.py).
+Sources:
+  - abbreviation list + clean-up order: keithito/tacotron text/cleaners.py (MIT)
+    https://github.com/keithito/tacotron/blob/master/text/cleaners.py
+  - number expansion order (money, ordinals, integers): keithito/tacotron text/numbers.py, re-implemented with num2words
+  - phonemes: phonemizer EspeakBackend (Bernard & Titeux, 2021), https://bootphon.github.io/phonemizer/
+  - build_vocab / text_to_ids: adapted from the group prototype notebook/collab_assignment_3.ipynb
 """
 import json, logging, re, unicodedata
 from num2words import num2words
@@ -43,7 +48,7 @@ def expand_numbers(text):
 
 
 def normalize_text(text):
-    """Make arbitrary English text look like LJSpeech's normalised transcripts (see notebook §1.1.9)."""
+    """Make arbitrary English text look like LJSpeech's normalised transcripts (see notebook §1.9)."""
     for src, dst in _PUNCT_MAP.items():
         text = text.replace(src, dst)
     for pattern, full in _ABBREVIATIONS:
@@ -81,7 +86,7 @@ def build_vocab(phoneme_strings):
 
 
 def phonemes_to_ids(phonemes, vocab):
-    """Unknown symbols are dropped (none occur in val/test, see notebook §1.1.9.3)."""
+    """Unknown symbols are dropped (none occur in val/test, see notebook §1.9.3)."""
     return [vocab[ch] for ch in phonemes if ch in vocab]
 
 
