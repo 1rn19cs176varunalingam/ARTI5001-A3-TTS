@@ -1,0 +1,148 @@
+/Users/varun/ARTI5001-A3-TTS/.venv/lib/python3.13/site-packages/torch/nn/utils/weight_norm.py:145: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+W1031 13:36:50.289000 39330 .venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Removing weight norm...
+Loading weights:   0%|          | 0/479 [00:00<?, ?it/s]Loading weights: 100%|██████████| 479/479 [00:00<00:00, 8662.82it/s]
+[transformers] Using custom `forced_decoder_ids` from the (generation) config. This is deprecated in favor of the `task` and `language` flags/config options.
+[transformers] Passing `generation_config` together with generation-related arguments=({'suppress_tokens', 'begin_suppress_tokens'}) is deprecated and will be removed in future versions. Please pass either a `generation_config` object OR all generation parameters explicitly, but not both.
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer WhisperTokenizer. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+/Users/varun/ARTI5001-A3-TTS/.venv/lib/python3.13/site-packages/pysptk/util.py:32: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+  step sweep: 50/6,550 done, about 170 min left
+  step sweep: 100/6,550 done, about 180 min left
+  step sweep: 150/6,550 done, about 181 min left
+  step sweep: 200/6,550 done, about 187 min left
+  step sweep: 250/6,550 done, about 186 min left
+  step sweep: 300/6,550 done, about 186 min left
+  step sweep: 350/6,550 done, about 188 min left
+  step sweep: 400/6,550 done, about 189 min left
+  step sweep: 450/6,550 done, about 189 min left
+  step sweep: 500/6,550 done, about 189 min left
+  step sweep: 550/6,550 done, about 190 min left
+  step sweep: 600/6,550 done, about 194 min left
+  step sweep: 650/6,550 done, about 193 min left
+  step sweep: 700/6,550 done, about 192 min left
+  step sweep: 750/6,550 done, about 192 min left
+  step sweep: 800/6,550 done, about 192 min left
+  step sweep: 850/6,550 done, about 192 min left
+  step sweep: 900/6,550 done, about 190 min left
+  step sweep: 950/6,550 done, about 189 min left
+  step sweep: 1,000/6,550 done, about 189 min left
+  step sweep: 1,050/6,550 done, about 188 min left
+  step sweep: 1,100/6,550 done, about 185 min left
+  step sweep: 1,150/6,550 done, about 183 min left
+  step sweep: 1,200/6,550 done, about 180 min left
+  step sweep: 1,250/6,550 done, about 178 min left
+  step sweep: 1,300/6,550 done, about 176 min left
+  step sweep: 1,350/6,550 done, about 172 min left
+  step sweep: 1,400/6,550 done, about 169 min left
+  step sweep: 1,450/6,550 done, about 167 min left
+  step sweep: 1,500/6,550 done, about 164 min left
+  step sweep: 1,550/6,550 done, about 161 min left
+  step sweep: 1,600/6,550 done, about 159 min left
+  step sweep: 1,650/6,550 done, about 157 min left
+  step sweep: 1,700/6,550 done, about 154 min left
+  step sweep: 1,750/6,550 done, about 152 min left
+  step sweep: 1,800/6,550 done, about 150 min left
+  step sweep: 1,850/6,550 done, about 148 min left
+  step sweep: 1,900/6,550 done, about 146 min left
+  step sweep: 1,950/6,550 done, about 144 min left
+  step sweep: 2,000/6,550 done, about 142 min left
+  step sweep: 2,050/6,550 done, about 140 min left
+  step sweep: 2,100/6,550 done, about 138 min left
+  step sweep: 2,150/6,550 done, about 136 min left
+  step sweep: 2,200/6,550 done, about 135 min left
+  step sweep: 2,250/6,550 done, about 133 min left
+  step sweep: 2,300/6,550 done, about 131 min left
+  step sweep: 2,350/6,550 done, about 129 min left
+  step sweep: 2,400/6,550 done, about 128 min left
+  step sweep: 2,450/6,550 done, about 126 min left
+  step sweep: 2,500/6,550 done, about 124 min left
+  step sweep: 2,550/6,550 done, about 123 min left
+  step sweep: 2,600/6,550 done, about 121 min left
+  step sweep: 2,650/6,550 done, about 119 min left
+  step sweep: 2,700/6,550 done, about 118 min left
+  step sweep: 2,750/6,550 done, about 116 min left
+  step sweep: 2,800/6,550 done, about 114 min left
+  step sweep: 2,850/6,550 done, about 113 min left
+  step sweep: 2,900/6,550 done, about 111 min left
+  step sweep: 2,950/6,550 done, about 109 min left
+  step sweep: 3,000/6,550 done, about 108 min left
+  step sweep: 3,050/6,550 done, about 106 min left
+  step sweep: 3,100/6,550 done, about 105 min left
+  step sweep: 3,150/6,550 done, about 103 min left
+  step sweep: 3,200/6,550 done, about 102 min left
+  step sweep: 3,250/6,550 done, about 100 min left
+  step sweep: 3,300/6,550 done, about 98 min left
+  step sweep: 3,350/6,550 done, about 97 min left
+  step sweep: 3,400/6,550 done, about 96 min left
+  step sweep: 3,450/6,550 done, about 94 min left
+  step sweep: 3,500/6,550 done, about 93 min left
+  step sweep: 3,550/6,550 done, about 91 min left
+  step sweep: 3,600/6,550 done, about 90 min left
+  step sweep: 3,650/6,550 done, about 88 min left
+  step sweep: 3,700/6,550 done, about 86 min left
+  step sweep: 3,750/6,550 done, about 85 min left
+  step sweep: 3,800/6,550 done, about 84 min left
+  step sweep: 3,850/6,550 done, about 82 min left
+  step sweep: 3,900/6,550 done, about 81 min left
+  step sweep: 3,950/6,550 done, about 79 min left
+  step sweep: 4,000/6,550 done, about 77 min left
+  step sweep: 4,050/6,550 done, about 76 min left
+  step sweep: 4,100/6,550 done, about 74 min left
+  step sweep: 4,150/6,550 done, about 73 min left
+  step sweep: 4,200/6,550 done, about 71 min left
+  step sweep: 4,250/6,550 done, about 70 min left
+  step sweep: 4,300/6,550 done, about 68 min left
+  step sweep: 4,350/6,550 done, about 67 min left
+  step sweep: 4,400/6,550 done, about 65 min left
+  step sweep: 4,450/6,550 done, about 63 min left
+  step sweep: 4,500/6,550 done, about 62 min left
+  step sweep: 4,550/6,550 done, about 60 min left
+  step sweep: 4,600/6,550 done, about 59 min left
+  step sweep: 4,650/6,550 done, about 57 min left
+  step sweep: 4,700/6,550 done, about 56 min left
+  step sweep: 4,750/6,550 done, about 54 min left
+  step sweep: 4,800/6,550 done, about 53 min left
+  step sweep: 4,850/6,550 done, about 51 min left
+  step sweep: 4,900/6,550 done, about 50 min left
+  step sweep: 4,950/6,550 done, about 48 min left
+  step sweep: 5,000/6,550 done, about 46 min left
+  step sweep: 5,050/6,550 done, about 45 min left
+  step sweep: 5,100/6,550 done, about 43 min left
+  step sweep: 5,150/6,550 done, about 42 min left
+  step sweep: 5,200/6,550 done, about 40 min left
+  step sweep: 5,250/6,550 done, about 39 min left
+  step sweep: 5,300/6,550 done, about 37 min left
+  step sweep: 5,350/6,550 done, about 36 min left
+  step sweep: 5,400/6,550 done, about 34 min left
+  step sweep: 5,450/6,550 done, about 33 min left
+  step sweep: 5,500/6,550 done, about 31 min left
+  step sweep: 5,550/6,550 done, about 30 min left
+  step sweep: 5,600/6,550 done, about 28 min left
+  step sweep: 5,650/6,550 done, about 27 min left
+  step sweep: 5,700/6,550 done, about 25 min left
+  step sweep: 5,750/6,550 done, about 24 min left
+  step sweep: 5,800/6,550 done, about 23 min left
+  step sweep: 5,850/6,550 done, about 21 min left
+  step sweep: 5,900/6,550 done, about 20 min left
+  step sweep: 5,950/6,550 done, about 18 min left
+  step sweep: 6,000/6,550 done, about 16 min left
+  step sweep: 6,050/6,550 done, about 15 min left
+  step sweep: 6,100/6,550 done, about 13 min left
+  step sweep: 6,150/6,550 done, about 12 min left
+  step sweep: 6,200/6,550 done, about 10 min left
+  step sweep: 6,250/6,550 done, about 9 min left
+  step sweep: 6,300/6,550 done, about 7 min left
+  step sweep: 6,350/6,550 done, about 6 min left
+  step sweep: 6,400/6,550 done, about 4 min left
+  step sweep: 6,450/6,550 done, about 3 min left
+  step sweep: 6,500/6,550 done, about 1 min left
+  step sweep: 6,550/6,550 done, about 0 min left
+          n  WER_%  WER_%_lo  WER_%_hi  MCD_dB    RTF  ΔWER_vs_ref  ΔWER_vs_ref_lo  ΔWER_vs_ref_hi
+steps                                                                                             
+1      1310  3.653     3.307     3.998   6.850  0.053       -1.372          -1.685          -1.069
+2      1310  3.964     3.616     4.299   6.761  0.041       -1.061          -1.321          -0.805
+4      1310  4.344     3.980     4.696   6.721  0.041       -0.681          -0.912          -0.460
+10     1310  5.025     4.642     5.403   6.814  0.044          NaN             NaN             NaN
+20     1310  5.308     4.900     5.680   6.867  0.048        0.283           0.114           0.442
