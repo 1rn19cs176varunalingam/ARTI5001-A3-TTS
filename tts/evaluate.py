@@ -206,23 +206,70 @@ def summarise_speed(raw):
 
 # ---------------------------------------------------------------- flow-matching step sweep
 @torch.no_grad()
-def step_sweep(sents, ckpt_path, data_dir, vocoder_path, device, steps=(1, 2, 4, 10, 20)):
-    """Number of Euler steps at inference: the quality/speed knob that only flow matching has."""
-    vocoder = load_vocoder(vocoder_path, device)
-    model, ck = load_tts(ckpt_path, device)
-    asr, rows = Whisper(device), []
-    for n in steps:
-        for k, (cid, text) in enumerate(sents):
+def step_sweep(sents, ckpt_path, data_dir, vocoder_path, device, steps=(1, 2, 4, 10, 20), out_csv=None, save_every=50):
+    """Number of Euler steps at inference: the quality/speed knob that only flow matching has.
+    Same weights and the same noise seed per sentence (its index, as in score_test_set) at every step count.
+    With out_csv, finished (steps, sentence) pairs are saved every `save_every` sentences and skipped on a re-run."""
+    out_csv = Path(out_csv) if out_csv else None
+    old = pd.read_csv(out_csv) if out_csv is not None and out_csv.exists() else pd.DataFrame()
+    done = set(zip(old.steps, old.id)) if len(old) else set()
+    todo = [(n, k, cid, text) for n in steps for k, (cid, text) in enumerate(sents) if (n, cid) not in done]
+    rows = []
+    if todo:
+        vocoder = load_vocoder(vocoder_path, device)
+        model, ck = load_tts(ckpt_path, device)
+        asr = Whisper(device)
+        synthesize(sents[0][1], model, vocoder, ck["vocab"], ck["mel_stats"], n_steps=steps[0])   # warm-up, not timed
+        t_start = time.perf_counter()
+        for j, (n, k, cid, text) in enumerate(todo, 1):
             torch.manual_seed(k)
             gt = load_wav(Path(data_dir) / "wavs" / f"{cid}.wav")
+            if device.type == "mps":
+                torch.mps.synchronize()
             t0 = time.perf_counter()
             wav = synthesize(text, model, vocoder, ck["vocab"], ck["mel_stats"], n_steps=n)[0]
             dt = time.perf_counter() - t0
-            rows.append({"steps": n, "id": cid, "text": text, "whisper": asr(wav), "mcd": mcd_dtw(gt, wav), "rtf": dt / (len(wav) / SR)})
-    df = pd.DataFrame(rows)
-    summary = pd.DataFrame([{"steps": n, "WER_%": corpus_wer(g), "MCD_dB": g.mcd.mean(), "RTF": g.rtf.median()}
-                            for n, g in df.groupby("steps")]).set_index("steps")
-    return summary, df
+            rows.append({"steps": n, "id": cid, "text": text, "whisper": asr(wav), "mcd": mcd_dtw(gt, wav),
+                         "rtf": dt / (len(wav) / SR), "device": str(device)})
+            if out_csv is not None and (j % save_every == 0 or j == len(todo)):
+                pd.concat([old, pd.DataFrame(rows)], ignore_index=True).to_csv(out_csv, index=False)
+                el = time.perf_counter() - t_start
+                print(f"  step sweep: {len(done) + j:,}/{len(done) + len(todo):,} done, "
+                      f"about {el / j * (len(todo) - j) / 60:.0f} min left", flush=True)
+    df = pd.concat([old, pd.DataFrame(rows)], ignore_index=True)
+    return sweep_summary(df), df
+
+
+def _error_counts(df):
+    """Per-sentence word errors and reference words, so a corpus WER bootstrap only has to add numbers up."""
+    counts = []
+    for ref, hyp in zip(df.text, df.whisper.fillna("")):
+        w = jiwer.process_words(text_for_wer(ref), text_for_wer(str(hyp)))
+        counts.append((w.substitutions + w.deletions + w.insertions, w.hits + w.substitutions + w.deletions))
+    return np.array(counts, dtype=float)
+
+
+def sweep_summary(df, ref_steps=10, n_boot=1000, seed=0):
+    """One row per step count: corpus WER with a 95% bootstrap CI, MCD, median RTF, and the paired WER
+    difference against `ref_steps` (the same resampled sentences for both step counts)."""
+    ids = sorted(set.intersection(*[set(g.id) for _, g in df.groupby("steps")]))   # sentences scored at every step count
+    per = {n: g.set_index("id").loc[ids] for n, g in df.groupby("steps")}
+    err = {n: _error_counts(g) for n, g in per.items()}
+    rng = np.random.default_rng(seed)
+    boots = [rng.integers(0, len(ids), len(ids)) for _ in range(n_boot)]
+    wer = lambda e, i: 100 * e[i, 0].sum() / e[i, 1].sum()
+    rows = []
+    for n, g in per.items():
+        e, row = err[n], {"steps": n, "n": len(ids)}
+        b = [wer(e, i) for i in boots]
+        row.update({"WER_%": wer(e, slice(None)), "WER_%_lo": np.percentile(b, 2.5), "WER_%_hi": np.percentile(b, 97.5),
+                    "MCD_dB": g.mcd.mean(), "RTF": g.rtf.median()})
+        if ref_steps in err and n != ref_steps:
+            d = [wer(e, i) - wer(err[ref_steps], i) for i in boots]
+            row.update({"ΔWER_vs_ref": row["WER_%"] - wer(err[ref_steps], slice(None)),
+                        "ΔWER_vs_ref_lo": np.percentile(d, 2.5), "ΔWER_vs_ref_hi": np.percentile(d, 97.5)})
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("steps")
 
 
 # ---------------------------------------------------------------- validation re-score
